@@ -488,7 +488,7 @@ function lateAbs(n){return S.boot.lateAbsent?n:(S.boot.lateThree?Math.floor(n/3)
 /* ================= api / ui plumbing ================= */
 /* Backend switch: leave API_URL empty to run on Google Apps Script (google.script.run).
    For Supabase, paste your Edge Function URL, e.g. 'https://YOUR-PROJECT.supabase.co/functions/v1/api' */
-var API_URL='https://YOUR-PROJECT-REF.supabase.co/functions/v1/api';
+var API_URL='https://ddqzebmuxkqelvijjdvx.supabase.co/rest/v1/api';
 var busyN=0;
 function busy(n){busyN+=n;$('#busy').classList.toggle('on',busyN>0);}
 function rpc(action,payload){
@@ -1496,4 +1496,4 @@ start();
 })();
 </script>
 </body>
-</html>
+</html>
