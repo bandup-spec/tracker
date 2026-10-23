@@ -1171,7 +1171,7 @@ function tiles(t){
 }
 function drawProfile(){
   var r=P.rec,rg=profRange(),dates=weekdays(rg[0],rg[1]);
-  P.sh.innerHTML='<div class="sh-h"><div><b>Student record</b><span>Tap any box to correct attendance</span></div><div class="acts"><button class="btn ghost sm" data-act="pPrint">Print / PDF</button><button class="btn ghost sm" data-act="pEdit">Edit student</button><button class="x" data-act="closeSheet" aria-label="Close">×</button></div></div>'+
+  P.sh.innerHTML='<div class="sh-h"><div><b>Student record</b><span>Tap a box to change it: P, A, L, E, then blank</span></div><div class="acts"><button class="btn ghost sm" data-act="pPrint">Print / PDF</button><button class="btn ghost sm" data-act="pEdit">Edit student</button><button class="x" data-act="closeSheet" aria-label="Close">×</button></div></div>'+
     idCard(r)+'<div class="remark">'+esc(r.remark)+'</div>'+tiles(r.stats)+
     '<div class="seg" id="pseg">'+[['day','Day'],['week','Week'],['month','Month'],['course','Whole course']].map(function(v){return '<button data-act="pView" data-v="'+v[0]+'" class="'+(P.view===v[0]?'on':'')+'">'+v[1]+'</button>';}).join('')+'</div>'+
     '<button class="btn green sm" data-act="pAllP" style="margin-left:10px">Mark all as Present</button>'+
@@ -1187,13 +1187,29 @@ H.pNav=function(el){
   drawProfile();
 };
 H.pEdit=function(){var s=P.rec.student;openStudentForm(s);};
+/* Tap a box to cycle it: blank > P > A > L > E > blank (same as the teacher grid). No popup. */
 H.pCell=function(el){
-  var d=el.dataset.d,h=+el.dataset.h,s=P.rec.student;
-  markSheet({title:s.name,sub:longD(d)+' · '+HL[h]+'. Tap again to clear.',students:[{id:s.id,name:'Attendance'}],
-    get:function(){return P.map[d+'|'+h]||'';},
-    apply:function(l){var st=l[0].st;if(st)P.map[d+'|'+h]=st;else delete P.map[d+'|'+h];saveEntries([{date:d,hour:h,studentId:s.id,status:st}]).then(function(){S.list=null;return loadProfile();});}
-  });
+  var d=el.dataset.d,h=+el.dataset.h,k=d+'|'+h,sid=P.rec.student.id;
+  var cur=P.map[k]||'',nx=CYCLE[(CYCLE.indexOf(cur)+1)%CYCLE.length];
+  if(nx)P.map[k]=nx;else delete P.map[k];
+  el.className='cell'+(nx?' st-'+nx:'');el.textContent=nx;      /* the box changes right away */
+  P.seq=(P.seq||0)+1;
+  P.q=(P.q||Promise.resolve()).then(function(){                  /* saves go out one after another, in tap order */
+    return api('saveAttendance',{entries:[{date:d,hour:h,studentId:sid,status:nx}]});
+  }).then(function(){S.list=null;pSoon();},function(e){fail(e);pRefresh();});
 };
+/* a moment after the last tap, refresh the totals, status and remark without moving the page */
+function pSoon(){var sh=P&&P.sh;if(!sh)return;clearTimeout(P.t);P.t=setTimeout(function(){if(P&&P.sh===sh)pRefresh();},600);}
+function pRefresh(){
+  var sh=P&&P.sh,seq=P&&P.seq||0;
+  if(!sh||!sh.isConnected)return;
+  return (P.q||Promise.resolve()).then(function(){return api('getStudentRecord',{id:P.id});}).then(function(r){
+    if(P.sh!==sh||!sh.isConnected)return;
+    if((P.seq||0)!==seq){pSoon();return;}                         /* tapped again while loading: wait for the newest taps */
+    P.rec=r;P.map={};r.rows.forEach(function(x){P.map[x[0]+'|'+x[1]]=x[2];});
+    var top=sh.scrollTop;drawProfile();sh.scrollTop=top;
+  }).catch(fail);
+}
 H.pPrint=function(){
   var r=P.rec,rg=profRange(),dates=weekdays(rg[0],rg[1]);
   printHtml('<div class="pr">'+idCard(r)+'<p><b>Remarks:</b> '+esc(r.remark)+'</p>'+tiles(r.stats)+'<p><b>'+profLabel()+'</b></p>'+recTable(dates,function(d,h){return P.map[d+'|'+h];},false)+legend()+'<p style="color:#64747e;font-size:12px">Printed '+mdy(today())+'</p></div>');
