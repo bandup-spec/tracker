@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CWA Attendance Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--teal:#156082;--teal2:#0e4660;--green:#4ea72e;--green2:#3f8d24;--lime:#8ed973;--red:#e5383b;--amber:#f2a900;--blue:#2f80ed;--ink:#12222b;--mut:#64747e;--line:#d6e0e5;--bg:#eef3f6;--card:#fff;--tint:#f4f7f9}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 "Segoe UI",Roboto,system-ui,-apple-system,Helvetica,Arial,sans-serif}
+body.noscroll{overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+h1,h2,h3{margin:0}
+small{font-weight:500}
+:focus-visible{outline:3px solid #7cc4ff;outline-offset:1px}
+#busy{position:fixed;top:0;left:0;right:0;height:3px;z-index:99;background:linear-gradient(90deg,transparent,var(--lime),transparent);background-size:50% 100%;background-repeat:no-repeat;opacity:0;animation:slide 1s linear infinite;pointer-events:none}
+#busy.on{opacity:1}
+@keyframes slide{from{background-position:-50% 0}to{background-position:150% 0}}
+#toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:120;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;width:92%;max-width:420px}
+.tst{background:#12222b;color:#fff;padding:11px 16px;border-radius:12px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.25);animation:pop .2s ease-out}
+.tst.err{background:#b3262a;pointer-events:auto;cursor:pointer;display:flex;gap:12px;align-items:flex-start;text-align:left;font-size:14px;line-height:1.4;word-break:break-word;user-select:text}
+.tst.err .tx{font-size:20px;line-height:1;opacity:.85}
+.tst.ok{background:var(--green2)}
+@keyframes pop{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+.loading,.empty{padding:36px 16px;text-align:center;color:var(--mut)}
+.empty b{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
+
+/* buttons & fields */
+.btn{border:0;border-radius:12px;padding:12px 18px;font-weight:700;background:var(--teal);color:#fff;min-height:44px}
+.btn.green{background:var(--green)}.btn.green:active{background:var(--green2)}
+.btn.ghost{background:#fff;color:var(--teal);border:1.5px solid var(--teal)}
+.btn.red{background:var(--red)}
+.btn.block{width:100%}
+.btn.sm{padding:8px 12px;min-height:36px;font-size:14px;border-radius:10px}
+.mini{border:1px solid var(--line);background:#fff;border-radius:8px;padding:4px 10px;font-weight:600;color:var(--teal);font-size:13px}
+.iconbtn{border:1.5px solid var(--line);background:#fff;border-radius:12px;min-width:44px;min-height:44px;font-weight:700;color:var(--ink)}
+.search,.inp,select.inp,textarea.inp{width:100%;border:1.5px solid #12222b;border-radius:14px;padding:11px 14px;background:#fff;min-height:46px}
+select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 50%,#12222b 50%),linear-gradient(135deg,#12222b 50%,transparent 50%);background-position:calc(100% - 20px) 55%,calc(100% - 14px) 55%;background-size:6px 6px;background-repeat:no-repeat;padding-right:36px}
+textarea.inp{min-height:130px;resize:vertical;font-family:ui-monospace,Consolas,monospace;font-size:13px}
+.lbl{display:block;font-weight:700;font-size:13px;margin:12px 0 5px;color:var(--mut)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hint{font-size:13px;color:var(--mut);margin-top:6px}
+.sw{display:flex;align-items:center;gap:10px;margin:14px 0;font-weight:600}
+.sw input{width:22px;height:22px;accent-color:var(--green)}
+
+/* login */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(180deg,#d9ecf5,#eef3f6)}
+.login-card{position:relative;width:100%;max-width:340px;background:#fff;border:1.5px solid #12222b;border-radius:18px;padding:44px 24px 28px}
+.login-tag{position:absolute;top:-1px;left:50%;transform:translate(-50%,-50%);background:linear-gradient(#35b3ee,#1585cb);color:#fff;font-weight:800;font-size:13px;letter-spacing:.06em;padding:7px 22px;border-radius:8px;white-space:nowrap;box-shadow:0 3px 8px rgba(21,133,203,.4)}
+.login-card h1{text-align:center;font-size:26px;letter-spacing:.04em;margin-bottom:22px}
+.fld{position:relative;margin:16px 0}
+.fld label{position:absolute;top:-9px;left:16px;background:#fff;padding:0 6px;font-size:11px;font-weight:700}
+.fld select,.fld input{width:100%;border:1.5px solid #12222b;border-radius:14px;padding:12px 16px;background:#fff;min-height:48px;text-align:center;font-weight:600;appearance:none}
+.err{color:#b3262a;font-weight:600;min-height:22px;text-align:center;margin:6px 0 10px}
+
+/* admin shell */
+.top{background:var(--teal);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 14px 0;position:sticky;top:0;z-index:30}
+.top-r{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brand{font-weight:800;font-size:17px;letter-spacing:.02em}
+.brand small{display:block;font-weight:500;opacity:.8;font-size:12px}
+.top .iconbtn{background:transparent;color:#fff;border-color:rgba(255,255,255,.4)}
+.nav{display:flex;gap:4px;overflow-x:auto;margin:8px -14px 0;padding:0 14px;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav button{border:0;background:transparent;color:#cfe6f1;padding:11px 14px;font-weight:700;white-space:nowrap;border-bottom:3px solid transparent}
+.nav button.on{color:#fff;border-bottom-color:var(--lime)}
+main{max-width:1040px;margin:0 auto;padding:14px 12px calc(40px + env(safe-area-inset-bottom))}
+.card{background:var(--card);border-radius:16px;padding:14px;box-shadow:0 1px 3px rgba(18,34,43,.08)}
+.ph{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:4px 0 12px}
+.ph h2{font-size:20px}
+.bars{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.bars .search{flex:1 1 200px}.bars select{flex:0 1 170px}
+
+/* stat cards */
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+@media(min-width:640px){.stats{grid-template-columns:repeat(4,1fr)}}
+.stat{background:#fff;border-radius:16px;padding:14px;border-left:6px solid var(--teal)}
+.stat b{display:block;font-size:30px;line-height:1.1}
+.stat span{color:var(--mut);font-weight:600;font-size:13px}
+.stat.g{border-color:var(--green)}.stat.a{border-color:var(--amber)}.stat.r{border-color:var(--red)}
+.today{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0 0}
+.tag{border-radius:8px;padding:4px 10px;font-weight:800;color:#fff;font-size:13px}
+.tag.P{background:var(--green)}.tag.A{background:var(--red)}.tag.L{background:var(--amber);color:#2b1d00}.tag.E{background:var(--blue)}
+
+/* student cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px}
+.scard{background:#fff;border-radius:16px;padding:13px 14px;box-shadow:0 1px 3px rgba(18,34,43,.08);cursor:pointer}
+.scard:active{background:var(--tint)}
+.sc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.sc-top b{font-size:16px}
+.sc-sub{color:var(--mut);font-size:13px;margin:3px 0 9px}
+.meter{height:8px;border-radius:6px;background:#e3eaee;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--green);border-radius:6px}
+.meter.AT-RISK i{background:var(--amber)}.meter.OFF-TRACK i{background:var(--red)}
+.sc-nums{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:13px;font-weight:600}
+.chip{border-radius:20px;padding:3px 10px;font-size:12px;font-weight:800;white-space:nowrap}
+.c-ON-TRACK{background:#d9f0d0;color:#235a10}.c-AT-RISK{background:#fde9b8;color:#744c00}.c-OFF-TRACK{background:#f8c9c9;color:#8e1a1d}.c-ARCH{background:#e3eaee;color:#4a5a63}
+.c-ELIGIBLE{background:#d9f0d0;color:#235a10}.c-NOT{background:#f8c9c9;color:#8e1a1d}.c-PENDING{background:#e3eaee;color:#4a5a63}
+.list .li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 4px;border-bottom:1px solid var(--line)}
+.list .li:last-child{border:0}
+.li small{display:block;color:var(--mut)}
+.pin{font:800 18px ui-monospace,Consolas,monospace;letter-spacing:.14em;background:#eaf3f8;color:var(--teal);border-radius:8px;padding:4px 10px}
+.acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+
+/* grids */
+.tw{overflow-x:auto;background:#fff;border-radius:12px}
+.tg{width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px;background:#fff}
+.tg th,.tg td{border:1px solid #9fb0b9;height:42px;padding:0 3px;text-align:center}
+.tg thead th{background:#fff;font-weight:800;height:38px;border-bottom:2px solid #12222b}
+.tg thead th small{display:block;font-size:11px;color:var(--mut)}
+.tg .lunch{background:#000;color:#fff;width:34px;padding:0;border-color:#000;font-size:11px;font-weight:800}
+.tg th.c-nm{text-align:left;padding:0 8px;font-weight:800;width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#fff}
+.tg tbody th.c-nm{cursor:pointer}
+.tg td.cell{font-weight:800;font-size:15px;cursor:pointer;color:#12222b}
+.dg td.cell{min-width:38px}
+.st-P{background:var(--green)!important;color:#0b2204!important}
+.st-A{background:var(--red)!important;color:#fff!important}
+.st-L{background:var(--amber)!important;color:#2b1d00!important}
+.st-E{background:var(--blue)!important;color:#fff!important}
+.st-part{background:#e6f3dd!important;color:#235a10!important;font-size:12px!important}
+td.todo{background:repeating-linear-gradient(45deg,#fff,#fff 5px,#fff6dc 5px,#fff6dc 10px)}
+td.off,th.off{background:repeating-linear-gradient(45deg,#f1f4f6,#f1f4f6 6px,#e4eaee 6px,#e4eaee 12px);color:var(--mut);cursor:default}
+td.fut{color:#b4c0c7}
+.st-inc{background:#ffd37a!important;color:#5a3a00!important;font-size:12px!important;box-shadow:inset 0 0 0 2px var(--amber)}
+td.miss{background:repeating-linear-gradient(45deg,#fff0f0,#fff0f0 5px,#fde0e0 5px,#fde0e0 10px)}
+.askbox{background:#fff6dc;border:1.5px solid var(--amber);border-radius:14px;padding:14px;margin:6px 0 4px;font-weight:600}
+.askbox p{margin:0 0 12px}
+.askbox .btn{margin-top:8px}
+.rd{text-align:left!important;padding:0 8px!important;font-weight:800;white-space:nowrap;background:#f4f7f9;width:112px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin:10px 2px;font-size:13px;color:var(--mut);font-weight:600}
+.legend i{display:inline-block;min-width:22px;text-align:center;border-radius:6px;padding:1px 6px;font-style:normal;font-weight:800;margin-right:4px}
+
+/* teacher */
+.t-wrap{max-width:760px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top)) 10px calc(30px + env(safe-area-inset-bottom))}
+.t-top{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+.namebox{flex:1;border:2px solid #12222b;border-radius:14px;padding:11px 14px;font-weight:700;background:#fff;text-align:center;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pill{display:flex;align-items:center;justify-content:space-between;gap:6px;background:var(--lime);border-radius:30px;padding:4px;margin-bottom:12px}
+.pill b{font-size:16px;text-align:center;flex:1}
+.pill button{border:0;background:transparent;font-size:22px;font-weight:800;min-width:44px;min-height:40px;border-radius:30px}
+.pill button:active{background:rgba(0,0,0,.1)}
+.pill-sub{display:flex;justify-content:center;gap:8px;margin:-4px 0 10px}
+.t-grid .c-time{width:44px;font-weight:800;font-size:12px}
+.t-grid .c-day{width:15%}
+.t-grid td.nm{text-align:left;padding:0 6px;font-weight:700;cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;position:relative}
+.t-grid td.nm.ph{color:#9aa9b1;font-weight:500}
+.t-grid td.nm .v{font-size:10px;color:var(--blue);margin-left:4px}
+.t-grid td.nm:after{content:"\2335";position:absolute;right:5px;top:50%;transform:translateY(-50%) rotate(0);font-size:11px;color:#12222b;opacity:.0}
+.t-grid td.nm.sel:after{opacity:1}
+.t-grid th.today{background:var(--lime)}
+.t-grid td.diff{box-shadow:inset 0 0 0 2px #2f80ed55}
+.banner{background:#fff6dc;border:1.5px dashed var(--amber);border-radius:12px;padding:10px 12px;margin-bottom:12px;display:flex;gap:10px;align-items:center;justify-content:space-between;font-weight:600}
+
+/* sheets */
+.overlay{position:fixed;inset:0;background:rgba(10,24,32,.55);z-index:60;display:flex;align-items:flex-end;justify-content:center;animation:fade .15s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.sheet{background:#fff;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;border-radius:20px 20px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));animation:up .2s ease-out}
+.sheet.full{max-width:980px;height:94vh;max-height:94vh;background:var(--bg)}
+@keyframes up{from{transform:translateY(40px)}to{transform:none}}
+@media(min-width:700px){.overlay{align-items:center}.sheet{border-radius:20px;max-height:88vh}.sheet.full{height:90vh}}
+.sh-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px}
+.sh-h b{display:block;font-size:18px}.sh-h span{color:var(--mut);font-size:13px}
+.x{border:0;background:#eef3f6;border-radius:50%;width:38px;height:38px;font-size:22px;line-height:1;flex:none}
+.sh-f{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
+.sh-f .btn{flex:1}
+.mk-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.mk-name{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.mk-btns{display:flex;gap:8px;flex:none}
+.mk{width:50px;height:50px;border-radius:14px;border:2px solid var(--line);background:#fff;font-weight:900;font-size:19px}
+.mk.on.st-P,.mk.on.st-A,.mk.on.st-L,.mk.on.st-E{box-shadow:0 0 0 3px #12222b33}
+.mk:not(.on){color:#12222b}
+.mk.st-P.on{border-color:var(--green2)}
+.plist{max-height:38vh;overflow-y:auto;margin:10px 0;border:1px solid var(--line);border-radius:12px}
+.prow{display:flex;align-items:center;gap:10px;padding:11px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+.prow:last-child{border:0}
+.prow i{width:22px;height:22px;border-radius:50%;border:2px solid #9fb0b9;flex:none;display:grid;place-items:center;font-style:normal;font-size:13px;color:#fff}
+.prow.on{background:#eef8e9}.prow.on i{background:var(--green);border-color:var(--green)}
+.prow small{margin-left:auto;color:var(--mut)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.chips .c{background:#eaf3f8;color:var(--teal);border-radius:20px;padding:4px 6px 4px 12px;font-weight:700;font-size:13px;display:flex;gap:4px;align-items:center}
+.chips .c b{border:0;background:transparent;font-size:16px;padding:0 4px;color:var(--teal)}
+.days{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.days>span{font-weight:700;font-size:13px;color:var(--mut);margin-right:2px}
+.dchip{border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:8px 10px;font-weight:700;font-size:13px}
+.dchip.on{background:var(--teal);border-color:var(--teal);color:#fff}
+.dchip.dis{opacity:.35;pointer-events:none}
+.seg{display:inline-flex;background:#e3eaee;border-radius:12px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;padding:8px 14px;border-radius:10px;font-weight:700;color:var(--mut)}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+
+/* profile */
+.idcard{background:var(--teal);color:#fff;border-radius:16px;padding:14px 16px;margin-bottom:12px}
+.idn{font-size:24px;font-weight:800;margin-bottom:10px}
+.idg{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px 14px}
+.idg span{display:block;font-size:12px;opacity:.8}.idg b{font-size:15px}
+.tx-ON-TRACK{color:#b9f5a3}.tx-AT-RISK{color:#ffe08a}.tx-OFF-TRACK{color:#ffb1b3}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
+@media(min-width:640px){.tiles{grid-template-columns:repeat(4,1fr)}}
+.tile{background:#fff;border-radius:14px;padding:10px 12px}
+.tile b{font-size:20px}.tile span{display:block;font-size:12px;color:var(--mut);font-weight:600}
+.remark{background:#fff;border-left:6px solid var(--teal);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-weight:600}
+.pnav{display:flex;align-items:center;gap:8px;margin:10px 0}
+.pnav .pill{flex:1;margin:0;max-width:340px}
+
+/* reports */
+.rep{background:#fff;border-radius:14px;padding:16px;margin-top:14px;overflow-x:auto}
+.rep h2{font-size:20px}.rep h3{margin:18px 0 6px;font-size:15px}
+.rep p{margin:4px 0 12px;color:var(--mut)}
+.rt{width:100%;border-collapse:collapse;font-size:12.5px;min-width:760px}
+.rt th,.rt td{border:1px solid #b8c6cd;padding:6px 7px;text-align:left;vertical-align:top}
+.rt th{background:var(--teal);color:#fff}
+.rt td.n{text-align:center}
+.chk{max-height:230px;overflow:auto;border:1px solid var(--line);border-radius:12px;margin-top:8px}
+#printArea{display:none}
+
+/* burger menu (phones) */
+.burger{display:none;align-items:center;justify-content:center;font-size:22px;line-height:1;padding:0}
+.top-l{display:flex;align-items:center;gap:10px;min-width:0}
+.cur{display:none;font-weight:700;font-size:14px;opacity:.9}
+.drawer{position:fixed;inset:0;z-index:70;visibility:hidden}
+.drawer.open{visibility:visible}
+.dr-bg{position:absolute;inset:0;background:rgba(10,24,32,.55);opacity:0;transition:opacity .2s}
+.drawer.open .dr-bg{opacity:1}
+.dr-pan{position:absolute;top:0;bottom:0;left:0;width:80%;max-width:300px;background:#fff;transform:translateX(-100%);transition:transform .2s ease-out;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);box-shadow:4px 0 24px rgba(0,0,0,.25)}
+.drawer.open .dr-pan{transform:none}
+.dr-h{background:var(--teal);color:#fff;padding:18px 18px 16px}
+.dr-h b{display:block;font-size:17px}.dr-h small{display:block;opacity:.8;margin-top:2px}
+.dr-list{flex:1;overflow-y:auto;padding:8px 0}
+.dr-i{display:block;width:100%;text-align:left;border:0;border-left:4px solid transparent;background:transparent;padding:14px 18px;font-weight:700;font-size:16px;color:var(--ink)}
+.dr-i.on{background:#eaf3f8;color:var(--teal);border-left-color:var(--teal)}
+.dr-f{border-top:1px solid var(--line);padding:8px 0 calc(8px + env(safe-area-inset-bottom))}
+.dr-f .dr-i{color:#b3262a}
+@media(max-width:700px){
+  .burger{display:inline-flex}
+  .nav,.so{display:none}
+  .cur{display:block}
+}
+
+/* ===== visual polish (appearance only) ===== */
+:root{--line:#dbe4e9;--shadow:0 1px 2px rgba(18,34,43,.06),0 6px 18px rgba(18,34,43,.06)}
+html,body{font-family:"Figtree","Segoe UI",Roboto,system-ui,-apple-system,Helvetica,Arial,sans-serif}
+body{background:linear-gradient(180deg,#e4edf2,#f2f6f8) fixed}
+.top{background:linear-gradient(135deg,#0e4660,#156082 62%,#1b7aa3);box-shadow:0 3px 14px rgba(14,70,96,.28)}
+.brand{letter-spacing:.01em}
+.nav button{border-radius:10px 10px 0 0;transition:background .15s,color .15s}
+.nav button:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav button.on{background:rgba(255,255,255,.13)}
+.card,.stat,.scard,.tile,.rep,.remark{box-shadow:var(--shadow)}
+.card,.scard,.tile,.stat{border:1px solid rgba(18,34,43,.05)}
+.stat{border-left-width:5px;border-radius:14px}
+.stat b,.tile b,.pin,.pill b{font-variant-numeric:tabular-nums}
+.stat b{letter-spacing:-.02em}
+.scard{border-radius:14px;transition:box-shadow .15s}
+.scard:hover{box-shadow:0 2px 4px rgba(18,34,43,.08),0 10px 24px rgba(18,34,43,.1)}
+.meter{height:10px}
+.chip{padding:3px 11px}
+.btn{box-shadow:0 1px 2px rgba(18,34,43,.16);transition:background .15s,box-shadow .15s,transform .06s}
+.btn:active{transform:translateY(1px);box-shadow:none}
+.btn.ghost{box-shadow:none}
+.btn.ghost:hover{background:#eef6fa}
+.mini{transition:background .15s}.mini:hover{background:#eef6fa}
+.iconbtn{transition:background .15s}
+.search,.inp,select.inp,textarea.inp{border:1.5px solid #b7c7cf;transition:border-color .15s,box-shadow .15s}
+.search:focus,.inp:focus,select.inp:focus,textarea.inp:focus{outline:0;border-color:var(--teal);box-shadow:0 0 0 4px rgba(21,96,130,.15)}
+.lbl{letter-spacing:.01em}
+.tg th,.tg td{border-color:#c9d6dc}
+.tg thead th{border-bottom:2px solid var(--teal)}
+.tg tbody tr:nth-child(even) td:not(.off):not(.lunch):not(.todo):not(.miss):not([class*="st-"]){background:#f8fbfc}
+.tg td.cell{transition:box-shadow .1s}
+.tg td.cell:hover{box-shadow:inset 0 0 0 2px rgba(21,96,130,.55)}
+.tw{box-shadow:var(--shadow);border:1px solid rgba(18,34,43,.06)}
+.sheet{box-shadow:0 -8px 40px rgba(10,24,32,.25)}
+@media(min-width:700px){.sheet{box-shadow:0 20px 60px rgba(10,24,32,.3)}}
+.sh-h b{font-size:19px;letter-spacing:-.01em}
+.seg{background:#dfe8ed}
+.seg button{transition:background .15s,color .15s}
+.seg button.on{color:var(--teal)}
+.pill{box-shadow:inset 0 0 0 1px rgba(35,90,16,.12)}
+.pill b{font-weight:800}
+.idcard{background:linear-gradient(135deg,#0e4660,#156082 65%,#1b7aa3);border-radius:18px;box-shadow:0 6px 20px rgba(14,70,96,.25)}
+.remark{border-left-width:5px}
+.namebox{border-width:1.5px;box-shadow:var(--shadow)}
+.login-wrap{background:radial-gradient(1000px 500px at 50% -10%,#cfe6f2,transparent),linear-gradient(180deg,#e4edf2,#f2f6f8)}
+.login-card{border-color:#12222b;box-shadow:0 16px 48px rgba(21,96,130,.18)}
+.tst{box-shadow:0 8px 28px rgba(0,0,0,.28)}
+.dr-pan{box-shadow:6px 0 30px rgba(0,0,0,.3)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.acts-bar{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
+.acts-bar .btn{flex:1 1 auto}
+.btn:disabled{opacity:.45;cursor:default;box-shadow:none}
+.tv-seg{display:flex;width:100%;margin-bottom:12px}
+.tv-seg button{flex:1}
+.ro-note{background:#eaf3f8;color:var(--teal);border-radius:12px;padding:8px 12px;font-weight:700;font-size:13px;margin-bottom:12px;text-align:center}
+
+/* ===== minimal professional theme (appearance only) ===== */
+.camptag{color:#1f4a7a;font-weight:700}
+:root{--teal:#1f5f7a;--teal2:#174a60;--green:#2f8f5b;--green2:#277a4e;--lime:#e9eff3;--red:#c9423f;--amber:#d99a1f;--blue:#2f6fbd;--ink:#18242c;--mut:#6b7a85;--line:#e3e8ec;--bg:#f6f8fa;--card:#fff;--tint:#f6f8fa;--shadow:none}
+html,body{background:var(--bg);color:var(--ink)}
+body{background:var(--bg)}
+#busy{background-image:linear-gradient(90deg,transparent,var(--teal),transparent)}
+.ph h2{font-size:18px;font-weight:700}
+.tst{border-radius:8px;font-weight:500;box-shadow:0 6px 20px rgba(24,36,44,.2)}
+/* the login form's .err text style (red) also matched the red error toast, hiding its text */
+.tst.err,.tst.err .tmsg,.tst.err .tx{color:#fff}
+.tst.err{margin:0;min-height:0}
+
+/* header + navigation */
+.top{background:#fff;color:var(--ink);box-shadow:none;border-bottom:1px solid var(--line)}
+.brand{color:var(--ink);font-weight:700}
+.brand small{color:var(--mut);opacity:1}
+.top .iconbtn{background:#fff;color:var(--ink);border-color:var(--line)}
+.cur{color:var(--ink);opacity:1;font-weight:600}
+.nav button{color:var(--mut);border-radius:0;font-weight:600}
+.nav button:hover{background:transparent;color:var(--ink)}
+.nav button.on{background:transparent;color:var(--teal);border-bottom-color:var(--teal)}
+.dr-h{background:#fff;color:var(--ink);border-bottom:1px solid var(--line)}
+.dr-h small{opacity:1;color:var(--mut)}
+.dr-i{font-weight:600}
+.dr-i.on{background:#f0f5f8}
+.dr-pan{box-shadow:6px 0 24px rgba(24,36,44,.18)}
+
+/* buttons + fields */
+.btn{background:var(--teal);border-radius:8px;box-shadow:none;font-weight:600}
+.btn.green{background:var(--teal)}
+.btn.green:active{background:var(--teal2)}
+.btn.red{background:var(--red)}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid #cdd6dc}
+.btn.ghost:hover{background:var(--tint)}
+.mini{border-radius:6px;color:var(--ink);font-weight:600;border:1px solid #cdd6dc}
+.iconbtn{border-radius:8px;border:1px solid var(--line);font-weight:600}
+.search,.inp,select.inp,textarea.inp{border:1px solid #cdd6dc;border-radius:8px}
+.search:focus,.inp:focus,select.inp:focus,textarea.inp:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(31,95,122,.12)}
+.lbl{font-weight:600}
+.sw input{accent-color:var(--teal)}
+
+/* surfaces */
+.card,.stat,.scard,.tile,.rep,.remark{box-shadow:none;border:1px solid var(--line);border-radius:10px}
+.stat{border-left-width:3px;border-radius:10px}
+.stat b{font-size:26px;font-weight:700}
+.stat span{font-weight:500}
+.scard{border-radius:10px;cursor:pointer}
+.scard:hover{box-shadow:none;border-color:#c5d0d7}
+.meter{height:6px}
+.chip{font-weight:700;font-size:11.5px;border-radius:6px;padding:3px 8px}
+.remark{border-left:3px solid var(--teal);border-radius:8px;font-weight:500}
+.banner{background:#fbf7ec;border:1px solid #efe3bd;border-radius:10px;font-weight:500}
+.askbox{background:#fbf7ec;border:1px solid #efe3bd;border-radius:10px}
+.ro-note{background:#f0f5f8;border:1px solid var(--line);border-radius:8px;font-weight:600;color:var(--teal2)}
+.idcard{background:var(--teal);box-shadow:none;border-radius:12px}
+.idn{font-weight:700}
+.tag{border-radius:6px;font-weight:700}
+.tag.P{background:#d6eddd;color:#14532d}
+.tag.A{background:#f8d4d3;color:#8a1f1d}
+.tag.L{background:#fbe8b8;color:#6b4700}
+.tag.E{background:#d3e3f7;color:#1b4a8a}
+.pin{background:#eef2f5;color:var(--ink);font-weight:700;border-radius:6px}
+
+/* grids */
+.tw{box-shadow:none;border:1px solid var(--line);border-radius:10px}
+.tg th,.tg td{border-color:#e3e8ec}
+.tg thead th{background:#fafbfc;border-bottom:1px solid #cdd6dc;font-weight:700}
+.tg tbody tr:nth-child(even) td:not(.off):not(.lunch):not(.todo):not(.miss):not([class*="st-"]){background:#fff}
+.tg .lunch{background:#eef2f5;color:var(--mut);border-color:#e3e8ec;font-weight:600}
+.tg th.c-nm{font-weight:700;background:#fff}
+.tg td.cell{font-weight:700}
+.tg td.cell:hover{box-shadow:inset 0 0 0 2px rgba(31,95,122,.35)}
+.rd{background:#fafbfc}
+td.off,th.off{background:#f3f5f7}
+td.todo{background:#fffaf0}
+td.miss{background:#fdf1f0}
+.t-grid th.today{background:#e1ecf1;color:var(--teal2)}
+.st-P{background:#d6eddd!important;color:#14532d!important}
+.st-A{background:#f8d4d3!important;color:#8a1f1d!important}
+.st-L{background:#fbe8b8!important;color:#6b4700!important}
+.st-E{background:#d3e3f7!important;color:#1b4a8a!important}
+.st-part{background:#e8f4ec!important;color:#14532d!important}
+.st-inc{background:#fdebc0!important;color:#6b4700!important;box-shadow:inset 0 0 0 1px var(--amber)}
+.legend{font-weight:500}
+.legend i{border-radius:4px}
+
+/* week pill, segmented control, name box */
+.pill{background:var(--lime);box-shadow:none;border-radius:10px;padding:3px}
+.pill b{font-weight:600}
+.pill button{border-radius:8px}
+.seg{background:#eef2f5;border-radius:10px}
+.seg button{border-radius:8px;font-weight:600}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(24,36,44,.1)}
+.namebox{border:1px solid var(--line);border-radius:10px;font-weight:600;box-shadow:none}
+.acts-bar .btn{font-weight:600}
+
+/* sheets + pickers */
+.sheet{box-shadow:0 10px 40px rgba(24,36,44,.18);border-radius:14px 14px 0 0}
+@media(min-width:700px){.sheet{border-radius:14px}}
+.sheet.full{background:var(--bg)}
+.sh-h b{font-weight:700}
+.x{background:#eef2f5}
+.mk{border-radius:10px;border:1px solid #cdd6dc;font-weight:700}
+.mk.on.st-P,.mk.on.st-A,.mk.on.st-L,.mk.on.st-E{box-shadow:0 0 0 2px rgba(24,36,44,.35)}
+.prow.on{background:#f0f7f3}
+.prow.on i{background:var(--teal);border-color:var(--teal)}
+.chips .c{border-radius:6px;background:#eef2f5;color:var(--ink)}
+.chips .c b{color:var(--mut)}
+.dchip{border:1px solid #cdd6dc;border-radius:8px;font-weight:600}
+.dchip.on{background:var(--teal);border-color:var(--teal)}
+.chk,.plist{border-radius:8px}
+
+/* login */
+.login-wrap{background:var(--bg)}
+.login-card{border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 30px rgba(24,36,44,.06)}
+.login-tag{background:var(--teal);box-shadow:none;border-radius:6px;font-size:11px;letter-spacing:.1em}
+.login-card h1{font-size:22px;font-weight:700;letter-spacing:.02em}
+.fld label{font-weight:600;color:var(--mut)}
+.fld select,.fld input{border:1px solid #cdd6dc;border-radius:8px;font-weight:500}
+
+@media print{
+  @page{margin:12mm}
+  body>*:not(#printArea){display:none!important}
+  #printArea{display:block!important}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{background:#fff}
+  .rep,.pr{padding:0;margin:0}
+  .tg th,.tg td{height:24px}
+  .pr-sec{break-inside:avoid;margin-bottom:14px}
+}
+</style>
+</head>
+<body>
+<div id="busy"></div>
+<div id="app"></div>
+<div id="toast"></div>
+<div id="printArea"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ================= constants & helpers ================= */
+var REG_HOURS=[8,9,10,11,13,14,15,16],CAMP_HOURS=[7,12,17];
+/* Camp season (admin setting): adds 7AM, 12NN, 5PM and a Saturday column. 12NN takes the place of the lunch break. */
+function campOn(){return !!(S.boot&&S.boot.camp);}
+function hrs(){return campOn()?REG_HOURS.concat(CAMP_HOURS).sort(function(a,b){return a-b;}):REG_HOURS;}
+function allHrs(){return REG_HOURS.concat(CAMP_HOURS);}
+function lunchShown(){return !campOn();}
+function weekEnd(m){return add(m,campOn()?5:4);}
+function lastClassDay(t){var w=dow(t);if(w===0)return add(t,campOn()?-1:-2);if(w===6)return campOn()?t:add(t,-1);return t;}
+var HL={7:'7AM',12:'12NN',17:'5PM',8:'8AM',9:'9AM',10:'10AM',11:'11AM',13:'1PM',14:'2PM',15:'3PM',16:'4PM'};
+var DOW=['SUN','MON','TUE','WED','THU','FRI','SAT'];
+var DOW3=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+var MONS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var MONF=['January','February','March','April','May','June','July','August','September','October','November','December'];
+var COURSE={STANDARD:'Standard',INTENSIVE:'Intensive'};
+var PER={STANDARD:{h:30,a:6},INTENSIVE:{h:35,a:7}};
+var S={token:null,user:null,boot:null,hol:{},tab:'home',list:null,tabs:{}};
+var H={},IN={},CH={};
+var app=document.getElementById('app');
+function $(s,r){return (r||document).querySelector(s);}
+
+function p2(n){return (n<10?'0':'')+n;}
+function pd(s){var p=s.split('-');return new Date(Date.UTC(+p[0],+p[1]-1,+p[2]));}
+function fd(d){return d.toISOString().slice(0,10);}
+function add(s,n){var d=pd(s);d.setUTCDate(d.getUTCDate()+n);return fd(d);}
+function dow(s){return pd(s).getUTCDay();}
+function monday(s){var w=dow(s);return add(s,w===0?-6:1-w);}
+function today(){var d=new Date();return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());}
+function mdy(s){return s?s.slice(5,7)+'-'+s.slice(8,10)+'-'+s.slice(0,4):'';}
+function longD(s){var d=pd(s);return DOW3[d.getUTCDay()]+', '+MONS[d.getUTCMonth()]+' '+d.getUTCDate();}
+function upD(s){var d=pd(s);return MONS[d.getUTCMonth()].toUpperCase()+' '+d.getUTCDate()+', '+d.getUTCFullYear();}
+function monthStart(s){return s.slice(0,7)+'-01';}
+function monthEnd(s){var d=pd(monthStart(s));d.setUTCMonth(d.getUTCMonth()+1);d.setUTCDate(0);return fd(d);}
+function addMonth(s,n){var d=pd(monthStart(s));d.setUTCMonth(d.getUTCMonth()+n);return fd(d);}
+function monthName(s){var d=pd(s);return MONF[d.getUTCMonth()]+' '+d.getUTCFullYear();}
+function allDays(a,b){var o=[];for(var d=a;d<=b;d=add(d,1))o.push(d);return o;}
+function weekdays(a,b){var o=[];for(var d=a;d<=b;d=add(d,1)){var w=dow(d);if(w>0&&(w<6||(w===6&&campOn())))o.push(d);}return o;}
+function nextWd(s,n){var d=add(s,n);while(dow(d)===0||(dow(d)===6&&!campOn()))d=add(d,n);return d;}
+function calcEnd(start,weeks){var e=add(start,weeks*7-1),w=dow(e);if(w===6)e=add(e,-1);if(w===0)e=add(e,-2);return e;}
+function nextMonday(){var t=today();return dow(t)===1?t:add(t,(8-dow(t))%7);}
+function iso(y,m,d){var s=y+'-'+p2(m)+'-'+p2(d);try{return fd(pd(s))===s?s:'';}catch(e){return '';}}
+function holOf(d){return S.hol[d]||null;}
+function isOff(d){var w=dow(d);if(w===0||(w===6&&!campOn()))return true;var h=holOf(d);return !!(h&&h.type==='NO_CLASS');}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function setHol(list){S.hol={};(list||[]).forEach(function(h){S.hol[h.date]=h;});}
+function clamp(d,a,b){return d<a?a:(d>b?b:d);}
+/* how many Late hours count as Absent under the current settings */
+function lateAbs(n){return S.boot.lateAbsent?n:(S.boot.lateThree?Math.floor(n/3):0);}
+
+/* ================= api / ui plumbing ================= */
+/* Backend switch: leave API_URL empty to run on Google Apps Script (google.script.run).
+   For Supabase, paste your Edge Function URL, e.g. 'https://YOUR-PROJECT.supabase.co/functions/v1/api' */
+var API_URL='https://YOUR-PROJECT-REF.supabase.co/functions/v1/api';
+var busyN=0;
+function busy(n){busyN+=n;$('#busy').classList.toggle('on',busyN>0);}
+function rpc(action,payload){
+  payload=payload||{};
+  if(!API_URL)return new Promise(function(res,rej){google.script.run.withSuccessHandler(res).withFailureHandler(rej).api(action,S.token,payload);});
+  return fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({action:action,token:S.token,payload:payload})}).then(function(r){return r.json();});
+}
+function api(action,payload){
+  busy(1);
+  return rpc(action,payload).then(function(r){
+    busy(-1);
+    if(r&&r.ok)return r.data;
+    var e=new Error((r&&r.error)||'Something went wrong.');e.auth=!!(r&&r.code==='AUTH');throw e;
+  },function(e){busy(-1);throw new Error((e&&e.message)||'Network problem. Check your connection and try again.');});
+}
+function toast(msg,kind){
+  var t=document.createElement('div');t.className='tst '+(kind||'');
+  if(kind==='err'){   /* errors stay on screen until tapped (or 20 s) so they can be read */
+    t.innerHTML='<span class="tmsg"></span><b class="tx" aria-hidden="true">×</b>';
+    t.querySelector('.tmsg').textContent=msg;t.setAttribute('role','alert');t.title='Tap to dismiss';
+    t.addEventListener('click',function(){t.remove();});
+    try{console.error('CWA error:',msg);}catch(e){}
+  }else t.textContent=msg;
+  var box=$('#toast');box.appendChild(t);
+  while(box.children.length>3)box.firstChild.remove();
+  setTimeout(function(){if(t.parentNode)t.remove();},kind==='err'?20000:2600);
+}
+function fail(e){if(e&&e.auth){forceLogout('Your session expired. Please sign in again.');}else toast((e&&e.message)||String(e),'err');}
+function openSheet(html,o){
+  var ov=document.createElement('div');ov.className='overlay';
+  ov.innerHTML='<div class="sheet'+(o&&o.full?' full':'')+'" role="dialog" aria-modal="true">'+html+'</div>';
+  ov.addEventListener('mousedown',function(e){if(e.target===ov)closeSheet();});
+  document.body.appendChild(ov);document.body.classList.add('noscroll');
+  return ov.firstChild;
+}
+function closeSheet(){
+  var o=document.querySelectorAll('.overlay');if(o.length)o[o.length-1].remove();
+  if(!document.querySelector('.overlay'))document.body.classList.remove('noscroll');
+}
+function closeAllSheets(){var o=document.querySelectorAll('.overlay');for(var i=0;i<o.length;i++)o[i].remove();document.body.classList.remove('noscroll');}
+function copyText(t){
+  function fb(){var a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');toast('Copied','ok');}catch(e){toast('Copy failed','err');}a.remove();}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){toast('Copied','ok');},fb);}else fb();
+}
+function printHtml(html){$('#printArea').innerHTML=html;setTimeout(function(){window.print();},200);}
+
+document.addEventListener('click',function(e){var t=e.target.closest('[data-act]');if(!t)return;var f=H[t.dataset.act];if(f){e.preventDefault();f(t,e);}});
+document.addEventListener('input',function(e){var t=e.target;if(t.dataset&&t.dataset.in&&IN[t.dataset.in])IN[t.dataset.in](t,e);});
+document.addEventListener('change',function(e){var t=e.target;if(t.dataset&&t.dataset.ch&&CH[t.dataset.ch])CH[t.dataset.ch](t,e);});
+document.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target.id==='lp'){H.doLogin();}if(e.key==='Escape'){if(document.querySelector('.overlay'))closeSheet();else H.drawClose();}});
+H.closeSheet=function(){closeSheet();};
+
+/* ================= login ================= */
+function showLogin(msg){
+  S.token=null;S.user=null;closeAllSheets();
+  app.innerHTML='<div class="login-wrap"><div class="login-card"><div class="login-tag">CWA ATTENDANCE TRACKER</div><h1>LOGIN</h1>'+
+    '<div class="fld"><select id="lu" data-ch="lmode"><option>Loading…</option></select></div>'+
+    '<div class="fld"><label id="ll">PIN</label><input id="lp" type="password" autocomplete="off" inputmode="numeric" maxlength="4"></div>'+
+    '<div class="err" id="le">'+esc(msg||'')+'</div>'+
+    '<button class="btn green block" data-act="doLogin">SIGN IN</button></div></div>';
+  api('loginOptions').then(function(list){
+    var last='';try{last=localStorage.getItem('cwa_user')||'';}catch(e){}
+    $('#lu').innerHTML=list.map(function(o){return '<option value="'+esc(o.id)+'"'+(o.id===last?' selected':'')+'>'+esc(o.name)+'</option>';}).join('');
+    loginMode();
+  }).catch(fail);
+}
+function loginMode(){
+  var admin=$('#lu').value==='ADMIN',p=$('#lp');
+  $('#ll').textContent=admin?'PASSWORD':'PIN';
+  if(admin){p.removeAttribute('maxlength');p.setAttribute('inputmode','text');}
+  else{p.setAttribute('maxlength','4');p.setAttribute('inputmode','numeric');}
+  p.value='';
+}
+CH.lmode=function(){loginMode();$('#le').textContent='';};
+H.doLogin=function(){
+  var u=$('#lu').value,p=$('#lp').value;
+  if(!p){$('#le').textContent='Enter your '+(u==='ADMIN'?'password':'4-digit PIN')+'.';return;}
+  api('login',{userId:u,pin:p}).then(function(r){
+    S.token=r.token;try{localStorage.setItem('cwa_token',r.token);localStorage.setItem('cwa_user',u);}catch(e){}
+    return api('bootstrap');
+  }).then(enter).catch(function(e){var el=$('#le');if(el)el.textContent=e.message;else fail(e);});
+};
+function forceLogout(msg){try{localStorage.removeItem('cwa_token');}catch(e){}showLogin(msg);}
+H.logout=function(){api('logout').catch(function(){});forceLogout();};
+function enter(b){
+  S.user=b.user;S.boot=b;setHol(b.holidays);S.list=null;T.tid=null;T.last=null;T.teachers=[];T.data=null;
+  if(b.user.role==='admin'){S.tab='home';renderAdmin();}else{startTeacher();}
+}
+function start(){
+  var t=null;try{t=localStorage.getItem('cwa_token');}catch(e){}
+  if(!t){showLogin();return;}
+  S.token=t;
+  api('bootstrap').then(enter).catch(function(){showLogin();});
+}
+
+/* ================= shared pieces ================= */
+function legend(){return '<div class="legend"><span><i class="st-P">P</i>Present</span><span><i class="st-A">A</i>Absent</span><span><i class="st-L">L</i>Late</span><span><i class="st-E">E</i>Excused (counts as present)</span></div>';}
+function hourHead(){var o='';hrs().forEach(function(h){if(h===13&&lunchShown())o+='<th class="lunch">12NN</th>';o+='<th>'+HL[h]+'</th>';});return o;}
+function hourCells(fn){var o='';hrs().forEach(function(h){if(h===13&&lunchShown())o+='<td class="lunch"></td>';o+=fn(h);});return o;}
+function chip(status,cert){
+  if(cert)return '<span class="chip c-'+(cert==='NOT ELIGIBLE'?'NOT':(cert==='ELIGIBLE'?'ELIGIBLE':'PENDING'))+'">'+cert+'</span>';
+  return '<span class="chip c-'+status+'">'+status+'</span>';
+}
+/* date x hour record table; get(date,hour) -> status; ed = editable */
+function recTable(dates,get,ed){
+  var o='<div class="tw"><table class="tg"><colgroup><col style="width:112px">'+hrs().map(function(h){return (h===13&&lunchShown()?'<col style="width:30px">':'')+'<col>';}).join('')+'</colgroup><thead><tr><th class="c-nm" style="width:112px">DATE</th>'+hourHead()+'</tr></thead><tbody>';
+  var t=today();
+  dates.forEach(function(d){
+    var hl=holOf(d);
+    if(isOff(d)){o+='<tr><th class="rd">'+upD(d)+'</th><td class="off" colspan="9">No class'+(hl?' · '+esc(hl.label):'')+'</td></tr>';return;}
+    o+='<tr><th class="rd">'+upD(d)+(hl?'<br><small>★ '+esc(hl.label)+'</small>':'')+'</th>'+hourCells(function(h){
+      var st=get(d,h)||'';
+      return '<td class="cell '+(st?'st-'+st:'')+'"'+(ed?' data-act="pCell" data-d="'+d+'" data-h="'+h+'"':'')+'>'+st+'</td>';
+    })+'</tr>';
+  });
+  return o+'</tbody></table></div>';
+}
+
+/* generic status sheet (P / A / L / E) */
+var MK=null;
+function markSheet(cfg){
+  var sh=openSheet('');
+  MK={cfg:cfg,sh:sh};
+  MK.draw=function(){
+    var head='<div class="sh-h"><div><b>'+esc(cfg.title)+'</b><span>'+esc(cfg.sub||'')+'</span></div><button class="x" data-act="mkDone" aria-label="Close">×</button></div>';
+    if(MK.ask){
+      var n=MK.ask.length;
+      sh.innerHTML=head+'<div class="askbox"><p>'+n+' student'+(n>1?'s are':' is')+' not marked yet:<br><span style="font-weight:500">'+MK.ask.map(function(x){return esc(x.name);}).join(', ')+'</span></p>'+
+        '<button class="btn red block" data-act="mkFill" data-st="A">Mark them Absent</button>'+
+        '<button class="btn green block" data-act="mkFill" data-st="P">Mark them Present</button>'+
+        '<button class="btn ghost block" data-act="mkBack">Go back</button></div>';
+      return;
+    }
+    sh.innerHTML=head+
+      (cfg.students.length>1?'<button class="btn green block" data-act="mkAll" data-st="P" style="margin-bottom:6px">All present</button><div class="hint" style="margin:0 0 6px">Then tap A, L or E for anyone who was not present.</div>':'')+
+      cfg.students.map(function(s){var cur=cfg.get(s.id);
+        return '<div class="mk-row"><div class="mk-name">'+esc(s.name)+'</div><div class="mk-btns">'+['P','A','L','E'].map(function(k){
+          return '<button class="mk st-'+k+(cur===k?' on':'')+'" data-act="mk" data-sid="'+esc(s.id)+'" data-st="'+k+'" aria-label="'+k+'">'+k+'</button>';}).join('')+'</div></div>';}).join('')+
+      (cfg.extra||'')+
+      '<div class="sh-f"><button class="btn green" data-act="mkDone">Done</button></div>';
+    // unselected buttons should look neutral
+    var bs=sh.querySelectorAll('.mk:not(.on)');for(var i=0;i<bs.length;i++){bs[i].classList.remove('st-P','st-A','st-L','st-E');}
+  };
+  MK.draw();
+}
+H.mk=function(el){var id=el.dataset.sid,st=el.dataset.st,cur=MK.cfg.get(id);MK.cfg.apply([{id:id,st:cur===st?'':st}]);MK.draw();};
+H.mkAll=function(el){var st=el.dataset.st;MK.cfg.apply(MK.cfg.students.map(function(s){return {id:s.id,st:st};}));MK.draw();};
+/* group classes: ask before closing if anyone is still unmarked */
+H.mkDone=function(){
+  var cfg=MK.cfg;
+  if(cfg.students.length>1){
+    var un=cfg.students.filter(function(s){return !cfg.get(s.id);});
+    if(un.length){MK.ask=un;MK.draw();return;}
+  }
+  MK.ask=null;closeSheet();
+};
+H.mkFill=function(el){
+  var st=el.dataset.st,un=MK.ask||[];
+  MK.ask=null;
+  if(un.length)MK.cfg.apply(un.map(function(s){return {id:s.id,st:st};}));
+  closeSheet();
+};
+H.mkBack=function(){MK.ask=null;MK.draw();};
+function saveEntries(entries,onErr){
+  return api('saveAttendance',{entries:entries}).catch(function(e){fail(e);if(onErr)onErr();});
+}
+
+/* ================= TEACHER ================= */
+var T={ws:null,data:null,stu:{},tid:null,teachers:[],last:null,seq:0,undo:[],viewKey:''};
+function startTeacher(){T.tid=S.user.id;loadWeek(monday(today()));}
+/* loads one teacher's week (T.tid). Teachers use getWeek for themselves; everything else uses getTeacherWeek. */
+function loadWeek(ws){
+  T.ws=ws;var seq=++T.seq;
+  var vk=T.tid+'|'+ws;if(T.viewKey!==vk){T.undo=[];T.viewKey=vk;}   /* Undo only covers the week on screen */
+  var own=S.user.role==='teacher'&&T.tid===S.user.id;
+  var req=own?api('getWeek',{weekStart:ws}):api('getTeacherWeek',{teacherId:T.tid,weekStart:ws});
+  return req.then(function(d){
+    if(seq!==T.seq)return;   /* a newer request replaced this one */
+    T.data=d;if(d.camp!==undefined)S.boot.camp=d.camp;T.stu={};d.students.forEach(function(s){T.stu[s.id]=s;});setHol(d.holidays);redraw();
+  }).catch(fail);
+}
+function weekDates(){return (campOn()?[0,1,2,3,4,5]:[0,1,2,3,4]).map(function(i){return add(T.ws,i);});}
+function nameOf(id){var s=T.stu[id];return s?s.name:'(removed)';}
+function namesText(l){if(!l.length)return '';return l.length<=2?l.map(nameOf).join(', '):l.length+' students';}
+function rowInfo(h){
+  var cnt={},ids={};
+  weekDates().forEach(function(d){var l=T.data.roster[d+'|'+h];if(l&&l.length){var k=l.slice().sort().join(',');cnt[k]=(cnt[k]||0)+1;ids[k]=l;}});
+  var keys=Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a];});
+  return {key:keys[0]||'',ids:keys.length?ids[keys[0]]:[],varies:keys.length>1};
+}
+function cellInfo(d,h){
+  var l=T.data.roster[d+'|'+h]||[];
+  if(!l.length)return {t:'',c:''};
+  var cnt={P:0,A:0,L:0,E:0},m=0,t=today();
+  l.forEach(function(id){var s=T.data.att[d+'|'+h+'|'+id];if(s){cnt[s]++;m++;}});
+  var fut=d>t,blank={t:'',c:fut?'fut':(d<t?'miss':'todo'),w:(!fut&&d<t)?'Not marked':''};
+  if(l.length===1){var s1=T.data.att[d+'|'+h+'|'+l[0]];return s1?{t:s1,c:'st-'+s1}:blank;}
+  if(!m)return blank;
+  if(m<l.length)return {t:'\u26A0 '+m+'/'+l.length,c:'st-inc',w:(l.length-m)+' of '+l.length+' not marked'};
+  return {t:(cnt.P+cnt.E+cnt.L)+'/'+l.length,c:cnt.A?'st-A':'st-P'};
+}
+/* A schedule is "read-only" when a teacher is looking at someone else's week. Admins can edit every schedule. */
+function isRO(){return S.user.role==='teacher'&&T.tid!==S.user.id;}
+function redraw(){if(S.user.role==='admin'){if(S.tab==='sched')drawSched();}else renderTeacher();}
+function weekBar(){
+  var ds=weekDates(),t=today();
+  return '<div class="pill"><button data-act="wk" data-n="-1" aria-label="Previous week">‹</button><b>'+mdy(ds[0])+' – '+mdy(ds[ds.length-1])+'</b><button data-act="wk" data-n="1" aria-label="Next week">›</button></div>'+
+    (T.ws!==monday(t)?'<div class="pill-sub"><button class="mini" data-act="wkToday">Back to this week</button></div>':'');
+}
+function weekEmpty(){
+  if(Object.keys(T.data.roster).length)return '';
+  if(isRO())return '<div class="banner"><span>No schedule has been set for this week.</span></div>';
+  return '<div class="banner"><span>Nothing here yet. Tap a name box to add students, or reuse last week.</span><button class="btn sm green" data-act="copyWeek">Copy last week</button></div>';
+}
+function gridHtml(){
+  var ds=weekDates(),t=today(),ro=isRO();
+  var o='<div class="tw"><table class="tg t-grid"><colgroup><col style="width:46px"><col>'+ds.map(function(){return '<col class="c-day" style="width:'+(ds.length>5?'12.5%':'15%')+'">';}).join('')+'</colgroup><thead><tr><th class="c-time">TIME</th><th class="c-nm" style="width:auto;text-align:center">Students names</th>'+
+    ds.map(function(d){var hl=holOf(d);return '<th class="'+(d===t?'today ':'')+(isOff(d)?'off':'')+'">'+DOW[dow(d)]+'<small>'+d.slice(8)+(hl&&!isOff(d)?' ★':'')+'</small></th>';}).join('')+'</tr></thead><tbody>';
+  hrs().forEach(function(h){
+    if(h===13&&lunchShown())o+='<tr><td class="lunch" style="width:auto">12NN</td><td class="lunch" colspan="'+ds.length+'"></td></tr>';
+    var ri=rowInfo(h),txt=namesText(ri.ids);
+    o+='<tr><td class="c-time" style="font-weight:800;font-size:12px">'+HL[h]+'</td><td class="nm'+(txt?'':' ph')+'" data-act="pick" data-h="'+h+'">'+(txt?esc(txt)+(ri.varies?'<span class="v">varies</span>':''):(ro?'':'+ Add student'))+'</td>'+
+      ds.map(function(d){
+        if(isOff(d))return '<td class="off" data-act="cell" data-d="'+d+'" data-h="'+h+'"></td>';
+        var ci=cellInfo(d,h),l=T.data.roster[d+'|'+h]||[],diff=l.length&&ri.key&&l.slice().sort().join(',')!==ri.key;
+        return '<td class="cell '+ci.c+(diff?' diff':'')+'"'+(ci.w?' title="'+ci.w+'"':'')+' data-act="cell" data-d="'+d+'" data-h="'+h+'">'+ci.t+'</td>';
+      }).join('')+'</tr>';
+  });
+  o+='</tbody></table></div>'+legend()+'<div class="hint"><b style="background:#ffd37a;padding:0 6px;border-radius:5px">\u26A0</b> = some students in a group class are not marked yet. Pink = a past hour with no attendance.</div>'+
+    (ro?'<div class="hint">View only. Tap a box to see who was in that hour and how they were marked. Tap a name to see the whole week for that hour.</div>'
+       :'<div class="hint">Tap a box to mark: <b>P</b> → <b>A</b> → <b>L</b> → <b>E</b> → blank. For a group class, tapping opens the list so you can mark each student. Tap a name to change who is in that hour.</div>');
+  return o;
+}
+function renderTeacher(){
+  var nm=S.user.name,ro=isRO();
+  var o='<div class="t-wrap"><div class="t-top"><button class="iconbtn burger" data-act="menu" aria-label="Open menu">☰</button><div class="namebox">'+esc(/^teacher/i.test(nm)?nm:'Teacher '+nm)+'</div><button class="iconbtn so" data-act="logout" aria-label="Sign out">Sign out</button></div>'+
+    '<div class="seg tv-seg"><button data-act="tvMine" class="'+(ro?'':'on')+'">My schedule</button><button data-act="tvOthers" class="'+(ro?'on':'')+'">Other teachers</button></div>';
+  if(ro)o+='<select class="inp" data-ch="tvSel" style="margin-bottom:10px" aria-label="Choose a teacher">'+T.teachers.map(function(x){return '<option value="'+esc(x.id)+'"'+(x.id===T.tid?' selected':'')+'>'+esc(x.name)+'</option>';}).join('')+'</select><div class="ro-note">View only: you can look at this schedule but not change it.</div>';
+  o+=weekBar()+weekEmpty()+actionBar()+gridHtml()+'</div>';
+  app.innerHTML=o+drawerHtml();
+}
+
+/* switching between my own schedule and other teachers' (view only) */
+H.tvMine=function(){if(!isRO())return;T.tid=S.user.id;loadWeek(T.ws);};
+H.tvOthers=function(){
+  if(isRO())return;
+  api('teacherList').then(function(list){
+    T.teachers=list.filter(function(x){return x.id!==S.user.id;});
+    if(!T.teachers.length){toast('No other teachers yet.');return;}
+    T.tid=(T.last&&T.teachers.some(function(x){return x.id===T.last;}))?T.last:T.teachers[0].id;
+    return loadWeek(T.ws);
+  }).catch(fail);
+};
+CH.tvSel=function(el){T.tid=el.value;T.last=el.value;loadWeek(T.ws);};
+
+/* read-only detail sheets (teachers looking at someone else's week) */
+function roCell(d,h){
+  if(isOff(d)){var hl=holOf(d);toast('No class on this date'+(hl?' ('+hl.label+')':'.'));return;}
+  var l=T.data.roster[d+'|'+h]||[];
+  if(!l.length){toast('No students scheduled here.');return;}
+  openSheet('<div class="sh-h"><div><b>'+longD(d)+' · '+HL[h]+'</b><span>'+esc(T.data.teacher.name)+' · view only</span></div><button class="x" data-act="closeSheet" aria-label="Close">×</button></div>'+
+    l.map(function(id){var st=T.data.att[d+'|'+h+'|'+id]||'';return '<div class="mk-row"><div class="mk-name">'+esc(nameOf(id))+'</div>'+(st?'<span class="tag '+st+'">'+st+'</span>':'<span class="hint" style="margin:0">Not marked</span>')+'</div>';}).join('')+
+    '<div class="sh-f"><button class="btn ghost" data-act="closeSheet">Close</button></div>');
+}
+function roRow(h){
+  var rows=weekDates().filter(function(d){return !isOff(d);}).map(function(d){
+    var l=T.data.roster[d+'|'+h]||[];
+    return '<div class="li"><b>'+DOW3[dow(d)]+' '+d.slice(8)+'</b><span style="text-align:right">'+(l.length?esc(l.map(nameOf).join(', ')):'<small>–</small>')+'</span></div>';
+  }).join('');
+  openSheet('<div class="sh-h"><div><b>Students at '+HL[h]+'</b><span>'+esc(T.data.teacher.name)+' · view only</span></div><button class="x" data-act="closeSheet" aria-label="Close">×</button></div><div class="list">'+(rows||'<div class="empty">No class days this week.</div>')+'</div><div class="sh-f"><button class="btn ghost" data-act="closeSheet">Close</button></div>');
+}
+H.wk=function(el){loadWeek(add(T.ws,7*(+el.dataset.n)));};
+H.wkToday=function(){loadWeek(monday(today()));};
+H.copyWeek=function(){if(isRO())return;api('copyLastWeek',{weekStart:T.ws,teacherId:T.tid}).then(function(r){toast(r.copied?'Copied '+r.copied+' slots from last week':'Last week had no students to copy',r.copied?'ok':'');return loadWeek(T.ws);}).catch(fail);};
+H.cell=function(el){
+  var d=el.dataset.d,h=+el.dataset.h;
+  if(isRO()){roCell(d,h);return;}
+  if(isOff(d)){var hl=holOf(d);toast('No class on this date'+(hl?' ('+hl.label+')':'.'));return;}
+  var l=T.data.roster[d+'|'+h]||[];
+  if(!l.length){openPicker(h,[d],rowInfo(h).ids);return;}
+  if(d>today()){toast("You can't mark a future date yet.");return;}
+  if(l.length===1){cycleCell(d,h,l[0]);return;}
+  openMarkT(d,h,l);
+};
+function openMarkT(d,h,l){
+  markSheet({title:longD(d)+' · '+HL[h],sub:'Tap a status. Tap it again to clear.',
+    students:l.map(function(id){return {id:id,name:nameOf(id)};}),
+    get:function(id){return T.data.att[d+'|'+h+'|'+id]||'';},
+    apply:function(list){applyMarks(list.map(function(x){return {date:d,hour:h,studentId:x.id,st:x.st};}));},
+    extra:'<div class="sh-f"><button class="btn ghost" data-act="mkChange" data-d="'+d+'" data-h="'+h+'">Change student</button></div>'});
+}
+H.mkChange=function(el){var d=el.dataset.d,h=+el.dataset.h;closeSheet();openPicker(h,[d],T.data.roster[d+'|'+h]||[]);};
+
+/* ---------- quick marking: tap to cycle, mark all present, undo ---------- */
+var CYCLE=['','P','A','L','E'];
+var saveQ=Promise.resolve();
+function entryOf(c,st){return {date:c.date,hour:c.hour,studentId:c.studentId,status:st,teacherId:T.tid};}
+/* saves go out one after another so fast taps always land in the order they were made */
+function queueSave(entries){
+  var parts=[];for(var i=0;i<entries.length;i+=150)parts.push(entries.slice(i,i+150));
+  saveQ=saveQ.then(function(){
+    return parts.reduce(function(p,part){return p.then(function(){return api('saveAttendance',{entries:part});});},Promise.resolve());
+  }).catch(function(e){fail(e);return loadWeek(T.ws);});
+  return saveQ;
+}
+function setAtt(d,h,id,st){var k=d+'|'+h+'|'+id;if(st)T.data.att[k]=st;else delete T.data.att[k];}
+/* items: [{date,hour,studentId,st}] -> updates the screen now, saves in the background, remembers it for Undo */
+function applyMarks(items){
+  var changes=[];
+  items.forEach(function(x){var prev=T.data.att[x.date+'|'+x.hour+'|'+x.studentId]||'';if(prev!==x.st)changes.push({date:x.date,hour:x.hour,studentId:x.studentId,prev:prev,st:x.st});});
+  if(!changes.length)return;
+  changes.forEach(function(c){setAtt(c.date,c.hour,c.studentId,c.st);});
+  T.undo.push(changes);if(T.undo.length>30)T.undo.shift();
+  redraw();
+  queueSave(changes.map(function(c){return entryOf(c,c.st);}));
+}
+H.undo=function(){
+  if(isRO()||!T.undo.length)return;
+  var changes=T.undo.pop();
+  changes.forEach(function(c){setAtt(c.date,c.hour,c.studentId,c.prev);});
+  redraw();
+  queueSave(changes.map(function(c){return entryOf(c,c.prev);}));
+};
+function cycleCell(d,h,id){
+  var cur=T.data.att[d+'|'+h+'|'+id]||'';
+  applyMarks([{date:d,hour:h,studentId:id,st:CYCLE[(CYCLE.indexOf(cur)+1)%CYCLE.length]}]);
+}
+function actionBar(){
+  if(isRO())return '';
+  return '<div class="acts-bar"><button class="btn green sm" data-act="allP">Mark all present</button><button class="btn ghost sm" data-act="copyMenu">Copy week</button><button class="btn ghost sm" data-act="undo"'+(T.undo.length?'':' disabled')+'>Undo</button></div>';
+}
+var MA=null;
+function allPList(d){
+  var out=[],t=today(),nowH=new Date().getHours();
+  hrs().forEach(function(h){
+    if(d===t&&h>nowH)return;   /* hours that have not started yet are skipped */
+    (T.data.roster[d+'|'+h]||[]).forEach(function(id){if(!T.data.att[d+'|'+h+'|'+id])out.push({date:d,hour:h,studentId:id,st:'P'});});
+  });
+  return out;
+}
+function drawAllP(){
+  var n=allPList(MA.day).length;
+  MA.sh.innerHTML='<div class="sh-h"><div><b>Mark all present</b><span>Only empty boxes are filled. Anything already marked stays as it is.</span></div><button class="x" data-act="closeSheet" aria-label="Close">×</button></div>'+
+    '<div class="days"><span>Day</span>'+MA.days.map(function(d){return '<button class="dchip'+(d===MA.day?' on':'')+'" data-act="maDay" data-d="'+d+'">'+DOW3[dow(d)]+' '+d.slice(8)+'</button>';}).join('')+'</div>'+
+    '<div class="remark" style="margin-top:12px">'+(n?'This will mark <b>'+n+' student hour'+(n===1?'':'s')+'</b> as Present on <b>'+longD(MA.day)+'</b>.':'Nothing to mark on '+longD(MA.day)+': every box is already marked, or no one is scheduled yet.')+(MA.day===today()?' Hours that have not started yet are skipped.':'')+'</div>'+
+    '<div class="sh-f"><button class="btn ghost" data-act="closeSheet">Cancel</button><button class="btn green" data-act="maGo"'+(n?'':' disabled')+'>Mark present</button></div>';
+}
+H.allP=function(){
+  if(isRO())return;
+  var t=today(),days=weekDates().filter(function(d){return d<=t&&!isOff(d);});
+  if(!days.length){toast('No class days to mark yet this week.');return;}
+  MA={days:days,day:days.indexOf(t)>-1?t:days[days.length-1]};
+  MA.sh=openSheet('');drawAllP();
+};
+H.maDay=function(el){MA.day=el.dataset.d;drawAllP();};
+H.maGo=function(){var list=allPList(MA.day);closeSheet();applyMarks(list);};
+
+/* ---------- copy a week (either direction; only empty hours are filled) ---------- */
+H.copyMenu=function(){
+  if(isRO())return;
+  var prev=add(T.ws,-7),next=add(T.ws,7);
+  function rng(m){return mdy(m)+' – '+mdy(weekEnd(m));}
+  openSheet('<div class="sh-h"><div><b>Copy a week</b><span>Only empty hours are filled. Hours you already set are not changed.</span></div><button class="x" data-act="closeSheet" aria-label="Close">×</button></div>'+
+    '<button class="btn ghost block" data-act="cwGo" data-dir="prev" style="text-align:left;margin-bottom:8px">Copy last week into this week<br><small style="color:var(--mut)">'+rng(prev)+'  →  '+rng(T.ws)+'</small></button>'+
+    '<button class="btn ghost block" data-act="cwGo" data-dir="next" style="text-align:left">Copy this week into next week<br><small style="color:var(--mut)">'+rng(T.ws)+'  →  '+rng(next)+'</small></button>'+
+    '<div class="sh-f"><button class="btn ghost" data-act="closeSheet">Cancel</button></div>');
+};
+H.cwGo=function(el){
+  var dir=el.dataset.dir,from=dir==='prev'?add(T.ws,-7):T.ws,to=dir==='prev'?T.ws:add(T.ws,7);
+  closeSheet();
+  api('copyWeek',{fromWeek:from,toWeek:to,teacherId:T.tid}).then(function(r){
+    toast(r.copied?'Copied '+r.copied+' hour'+(r.copied===1?'':'s')+(dir==='next'?' to next week':' into this week'):'Nothing to copy: the source week is empty, or the other week is already filled.',r.copied?'ok':'');
+    return loadWeek(dir==='next'&&r.copied?add(T.ws,7):T.ws);
+  }).catch(fail);
+};
+
+/* student picker */
+var PK=null;
+H.pick=function(el){
+  if(isRO()){roRow(+el.dataset.h);return;}
+  var h=+el.dataset.h,ds=weekDates().filter(function(d){return !isOff(d);});
+  openPicker(h,ds,rowInfo(h).ids);
+};
+function openPicker(h,days,ids){
+  PK={h:h,days:days.filter(function(d){return !isOff(d);}),sel:ids.slice(),q:''};
+  PK.sh=openSheet('');drawPicker();
+}
+function pkChips(){return PK.sel.length?'<div class="chips">'+PK.sel.map(function(id){return '<span class="c">'+esc(nameOf(id))+'<b data-act="pkTog" data-id="'+esc(id)+'" aria-label="Remove">×</b></span>';}).join('')+'</div>':'<div class="hint" style="margin:0 0 8px">No one selected. Saving will leave this hour empty.</div>';}
+function pkList(){
+  var q=PK.q.trim().toLowerCase(),list=T.data.students.filter(function(s){return s.active&&(!q||s.name.toLowerCase().indexOf(q)>-1);});
+  var addRow=PK.q.trim()?'<div class="prow" data-act="pkNew"><i>+</i><span><b>Add "'+esc(PK.q.trim())+'" as a new student</b></span></div>':'';
+  if(!list.length)return addRow+'<div class="empty">'+(T.data.students.length?'No student matches "'+esc(PK.q)+'".':'No students yet.')+'<br>Type the full name above, then tap Add.</div>';
+  return list.slice(0,80).map(function(s){var on=PK.sel.indexOf(s.id)>-1;
+    return '<div class="prow'+(on?' on':'')+'" data-act="pkTog" data-id="'+esc(s.id)+'"><i>'+(on?'✓':'')+'</i><span>'+esc(s.name)+'</span><small>'+COURSE[s.course]+(s.type==='CAMP'?' · Camp':'')+'</small></div>';}).join('')+(list.length>80?'<div class="hint" style="padding:8px 12px">Keep typing to narrow the list.</div>':'')+addRow;
+}
+function drawPicker(){
+  PK.sh.innerHTML='<div class="sh-h"><div><b>Students at '+HL[PK.h]+'</b><span>Pick one for man-to-man, or several for a group class</span></div><button class="x" data-act="closeSheet" aria-label="Close">×</button></div>'+
+    '<div id="pkSel">'+pkChips()+'</div>'+
+    '<input class="search" id="pkQ" data-in="pkq" placeholder="Search student\'s name" autocomplete="off" value="'+esc(PK.q)+'">'+
+    '<div class="plist" id="pkList">'+pkList()+'</div>'+
+    '<div class="days"><span>Apply to</span>'+weekDates().map(function(d){return '<button class="dchip'+(PK.days.indexOf(d)>-1?' on':'')+(isOff(d)?' dis':'')+'" data-act="pkDay" data-d="'+d+'">'+DOW3[dow(d)]+' '+d.slice(8)+'</button>';}).join('')+'</div>'+
+    '<div class="sh-f"><button class="btn ghost" data-act="closeSheet">Cancel</button><button class="btn green" data-act="pkSave">Save</button></div>';
+}
+IN.pkq=function(el){PK.q=el.value;$('#pkList').innerHTML=pkList();};
+H.pkTog=function(el){var id=el.dataset.id,i=PK.sel.indexOf(id);if(i>-1)PK.sel.splice(i,1);else PK.sel.push(id);$('#pkSel').innerHTML=pkChips();$('#pkList').innerHTML=pkList();};
+H.pkNew=function(){
+  var wk=weekDates()[0];
+  openSheet('<div class="sh-h"><div><b>Add new student</b><span>An admin will verify the details later</span></div><button class="x" data-act="closeSheet" aria-label="Close">×</button></div>'+
+    '<label class="lbl">Full name</label><input class="inp" id="nsName" value="'+esc(PK.q.trim())+'" autocomplete="off">'+
+    '<label class="lbl">Course</label><select class="inp" id="nsCourse"><option value="STANDARD">Standard</option><option value="INTENSIVE">Intensive</option></select>'+
+    (campOn()?'<label class="lbl">Student type</label><select class="inp" id="nsType"><option value="REGULAR">Regular</option><option value="CAMP">Camp</option></select>':'')+
+    '<div class="row2"><div><label class="lbl">Start date</label><input class="inp" type="date" id="nsStart" value="'+wk+'"></div><div><label class="lbl">Weeks (1–24)</label><input class="inp" type="number" min="1" max="24" id="nsWeeks" value="4" inputmode="numeric"></div></div>'+
+    '<div class="sh-f"><button class="btn ghost" data-act="closeSheet">Cancel</button><button class="btn green" data-act="nsSave">Add student</button></div>');
+};
+H.nsSave=function(){
+  api('addStudentT',{name:$('#nsName').value,course:$('#nsCourse').value,type:$('#nsType')?$('#nsType').value:'REGULAR',start:$('#nsStart').value,weeks:$('#nsWeeks').value}).then(function(st){
+    T.data.students.push(st);T.stu[st.id]=st;PK.sel.push(st.id);PK.q='';closeSheet();drawPicker();toast('Student added','ok');
+  }).catch(fail);
+};
+H.pkDay=function(el){var d=el.dataset.d,i=PK.days.indexOf(d);if(i>-1)PK.days.splice(i,1);else PK.days.push(d);el.classList.toggle('on');};
+H.pkSave=function(){
+  if(!PK.days.length){toast('Pick at least one day.','err');return;}
+  var h=PK.h,days=PK.days.slice(),ids=PK.sel.slice();
+  api('setRoster',{hour:h,dates:days,studentIds:ids,teacherId:T.tid}).then(function(){
+    days.forEach(function(d){if(ids.length)T.data.roster[d+'|'+h]=ids.slice();else delete T.data.roster[d+'|'+h];});
+    closeSheet();redraw();toast('Saved','ok');
+  }).catch(fail);
+};
+
+/* ================= ADMIN SHELL ================= */
+var TABS=[['home','Home'],['att','Attendance'],['sched','Schedules'],['students','Students'],['teachers','Teachers'],['reports','Reports'],['cal','Holidays'],['settings','Settings']];
+var VIEWS={};
+function renderAdmin(){
+  app.innerHTML='<div class="top"><div class="top-r"><div class="top-l"><button class="iconbtn burger" data-act="menu" aria-label="Open menu">☰</button><div class="brand">CWA Attendance Tracker<small>'+esc(S.boot.org)+'</small></div></div><span class="cur" id="cur"></span><button class="iconbtn so" data-act="logout">Sign out</button></div><div class="nav" id="nav">'+
+    TABS.map(function(t){return '<button data-act="tab" data-t="'+t[0]+'">'+t[1]+'</button>';}).join('')+'</div></div><main id="content"></main>'+drawerHtml();
+  goTab(S.tab);
+}
+function goTab(t){
+  S.tab=t;var bs=document.querySelectorAll('#nav button');
+  for(var i=0;i<bs.length;i++)bs[i].classList.toggle('on',bs[i].dataset.t===t);
+  var dl=document.querySelectorAll('#drawer .dr-i[data-t]');for(var j=0;j<dl.length;j++)dl[j].classList.toggle('on',dl[j].dataset.t===t);
+  var cu=$('#cur');if(cu){var ft=TABS.filter(function(x){return x[0]===t;})[0];cu.textContent=ft?ft[1]:'';}
+  var c=$('#content');if(!c)return;c.innerHTML='<div class="loading">Loading…</div>';window.scrollTo(0,0);
+  VIEWS[t]();
+}
+H.tab=function(el){goTab(el.dataset.t);};
+/* ---------- burger menu (phones). To add a teacher feature later, add one line to the teacher list in menuItems(). ---------- */
+function menuItems(){
+  if(S.user.role==='admin')return TABS.map(function(t){return {label:t[1],doo:'tab',t:t[0]};});
+  var m=[{label:'My schedule',doo:'tvMine'},{label:"Other teachers' schedules",doo:'tvOthers'},{label:'This week',doo:'wkToday'}];
+  if(!isRO())m.push({label:'Copy week',doo:'copyMenu'});
+  m.push({label:'Refresh',doo:'wkRefresh'});
+  return m;
+}
+function drawerHtml(){
+  var u=S.user,adm=u.role==='admin';
+  return '<div class="drawer" id="drawer"><div class="dr-bg" data-act="drawClose"></div><nav class="dr-pan"><div class="dr-h"><b>CWA Attendance Tracker</b><small>'+esc(adm?S.boot.org:u.name)+'</small></div><div class="dr-list">'+
+    menuItems().map(function(m){return '<button class="dr-i'+(adm&&m.t===S.tab?' on':'')+'" data-act="drawDo" data-do="'+m.doo+'"'+(m.t?' data-t="'+m.t+'"':'')+'>'+esc(m.label)+'</button>';}).join('')+
+    '</div><div class="dr-f"><button class="dr-i" data-act="drawDo" data-do="logout">Sign out</button></div></nav></div>';
+}
+H.menu=function(){var d=$('#drawer');if(d)d.classList.add('open');};
+H.drawClose=function(){var d=$('#drawer');if(d)d.classList.remove('open');};
+H.drawDo=function(el){H.drawClose();var f=H[el.dataset.do];if(f)f(el);};
+H.wkRefresh=function(){loadWeek(T.ws);};
+function loadList(force){
+  if(S.list&&!force)return Promise.resolve(S.list);
+  return api('listStudents').then(function(d){S.list=d;return d;});
+}
+function content(html){var c=$('#content');if(c)c.innerHTML=html;}
+
+/* ---------- Home ---------- */
+VIEWS.home=function(){
+  loadList(true).then(function(d){
+    var act=d.students.filter(function(s){return s.active;}),n={'ON-TRACK':0,'AT-RISK':0,'OFF-TRACK':0};
+    act.forEach(function(s){n[s.stats.status]++;});
+    var t=today(),cls=!isOff(t),tt=d.today;
+    var need=act.filter(function(s){return s.stats.status!=='ON-TRACK';}).sort(function(a,b){return a.stats.remaining-b.stats.remaining;});
+    var o='<div class="stats"><div class="stat"><b>'+act.length+'</b><span>Active students</span></div><div class="stat g"><b>'+n['ON-TRACK']+'</b><span>On track</span></div><div class="stat a"><b>'+n['AT-RISK']+'</b><span>At risk</span></div><div class="stat r"><b>'+n['OFF-TRACK']+'</b><span>Not eligible</span></div></div>'+
+      '<div class="card"><b>Today · '+longD(t)+'</b>'+(cls?'<div class="today"><span class="tag P">'+tt.P+' present</span><span class="tag A">'+tt.A+' absent</span><span class="tag L">'+tt.L+' late</span><span class="tag E">'+tt.E+' excused</span></div><div class="hint">Hours recorded so far today across all teachers.</div>':'<div class="hint" style="margin-top:6px">No class today'+(holOf(t)?' ('+esc(holOf(t).label)+')':' (weekend)')+'.</div>')+'</div>'+
+      '<div id="missBox"></div><div class="ph" style="margin-top:18px"><h2>Needs attention</h2></div>';
+    if(!act.length)o+='<div class="card empty"><b>No students yet</b>Add your first student or import a list.<div style="margin-top:12px"><button class="btn green" data-act="stNew">Add student</button> <button class="btn ghost" data-act="stBulk">Bulk import</button></div></div>';
+    else if(!need.length)o+='<div class="card empty"><b>Everyone is on track</b>Students who are close to the absence limit will show up here.</div>';
+    else o+='<div class="cards">'+need.map(stCard).join('')+'</div>';
+    content(o);loadMissing();
+  }).catch(fail);
+};
+/* past class hours where someone on the roster was never marked */
+function loadMissing(){
+  api('missingAttendance',{days:30}).then(function(d){
+    var el=$('#missBox');if(!el||S.tab!=='home')return;
+    if(!d.total){el.innerHTML='<div class="ph" style="margin-top:18px"><h2>Missing attendance</h2></div><div class="card empty" style="padding:16px"><b>All caught up</b>Every past class hour in the last '+d.days+' days has attendance for everyone on the roster.</div>';return;}
+    el.innerHTML='<div class="ph" style="margin-top:18px"><h2>Missing attendance</h2><span class="chip c-AT-RISK">'+d.total+' class hour'+(d.total===1?'':'s')+'</span></div><div class="card list">'+
+      d.slots.map(function(x){return '<div class="li" style="align-items:flex-start"><div><b>'+longD(x.date)+' · '+HL[x.hour]+'</b><small>'+esc(x.teacher)+'</small></div><div class="acts" style="justify-content:flex-end">'+
+        x.students.map(function(st){return '<button class="mini" data-act="missOpen" data-id="'+esc(st.id)+'" data-d="'+x.date+'">'+esc(st.name)+'</button>';}).join('')+'</div></div>';}).join('')+
+      (d.total>d.slots.length?'<div class="hint" style="padding:8px 4px">Showing the latest '+d.slots.length+' of '+d.total+'.</div>':'')+'</div><div class="hint">Last '+d.days+' days. Tap a name to open that day and fix the record.</div>';
+  }).catch(function(){});
+}
+H.missOpen=function(el){openProfile(el.dataset.id,'day',el.dataset.d);};
+
+/* ---------- Students ---------- */
+var SF={q:'',f:'active'};
+function stCard(s){
+  var t=s.stats,pct=t.allowed?Math.min(100,Math.round(t.absent/t.allowed*100)):0,st=s.active?t.status:'ARCH';
+  return '<div class="scard" data-act="prof" data-id="'+esc(s.id)+'"><div class="sc-top"><b>'+esc(s.name)+'</b><span class="chip c-'+st+'">'+(s.active?t.status:'ARCHIVED')+'</span></div>'+
+    '<div class="sc-sub">'+COURSE[s.course]+(s.type==='CAMP'?' · <b class="camptag">Camp</b>':'')+' · '+s.weeks+' wk'+(s.weeks>1?'s':'')+' · '+mdy(s.start)+' to '+mdy(s.end)+'</div>'+
+    '<div class="meter '+t.status+'"><i style="width:'+pct+'%"></i></div>'+
+    '<div class="sc-nums"><span>'+t.absent+' of '+t.allowed+' absent hrs used</span><button class="mini" data-act="stEdit" data-id="'+esc(s.id)+'">Edit</button></div></div>';
+}
+function stFiltered(){
+  var q=SF.q.trim().toLowerCase();
+  return S.list.students.filter(function(s){
+    if(q&&s.name.toLowerCase().indexOf(q)<0)return false;
+    if(SF.f==='archived')return !s.active;
+    if(!s.active)return false;
+    if(SF.f==='camp')return s.type==='CAMP';
+    if(SF.f==='regular')return s.type!=='CAMP';
+    if(SF.f==='risk')return s.stats.status==='AT-RISK';
+    if(SF.f==='off')return s.stats.status==='OFF-TRACK';
+    return true;
+  });
+}
+function drawStList(){
+  var l=stFiltered();
+  $('#stList').innerHTML=l.length?l.map(stCard).join(''):'<div class="empty" style="grid-column:1/-1"><b>'+(S.list.students.length?'No students found':'No students yet')+'</b>'+(S.list.students.length?'Try a different search or filter.':'Add one, or import many at once.')+'</div>';
+}
+VIEWS.students=function(){
+  loadList(true).then(function(){
+    content('<div class="ph"><h2>Students</h2><div class="acts"><button class="btn green sm" data-act="stNew">+ Add student</button><button class="btn ghost sm" data-act="stBulk">Bulk import</button></div></div>'+
+      '<div class="bars"><input class="search" data-in="stq" placeholder="Search student\'s name" value="'+esc(SF.q)+'"><select class="inp" data-ch="stf"><option value="active">Active</option><option value="camp">Camp students</option><option value="regular">Regular students</option><option value="risk">At risk</option><option value="off">Not eligible</option><option value="archived">Archived</option></select></div><div class="cards" id="stList"></div>');
+    $('select[data-ch="stf"]').value=SF.f;drawStList();
+  }).catch(fail);
+};
+IN.stq=function(el){SF.q=el.value;drawStList();};
+CH.stf=function(el){SF.f=el.value;drawStList();};
+H.stNew=function(){openStudentForm(null);};
+H.stEdit=function(el){var s=S.list.students.filter(function(x){return x.id===el.dataset.id;})[0];if(s)openStudentForm(s);};
+function afterStudentChange(){S.list=null;if(P&&P.sh&&document.body.contains(P.sh))loadProfile();if(S.tab==='students'||S.tab==='home')VIEWS[S.tab]();}
+var SFM=null;
+function openStudentForm(s){
+  var isNew=!s;s=s||{name:'',course:'STANDARD',type:'REGULAR',start:nextMonday(),weeks:4,notes:'',active:true};
+  SFM={id:s.id||'',custom:!isNew&&!!s.end&&s.end!==calcEnd(s.start,s.weeks)};
+  openSheet('<div class="sh-h"><div><b>'+(isNew?'Add student':'Edit student')+'</b><span>Fill in the details below</span></div><button class="x" data-act="closeSheet" aria-label="Close">×</button></div>'+
+    '<label class="lbl">Full name</label><input class="inp" id="sfName" value="'+esc(s.name)+'" autocomplete="off">'+
+    '<label class="lbl">Course</label><select class="inp" id="sfCourse" data-ch="sfc"><option value="STANDARD">Standard: 4 man-to-man, 2 group, 2 self-study</option><option value="INTENSIVE">Intensive: 7 man-to-man</option></select>'+
+    '<label class="lbl">Student type</label><select class="inp" id="sfType"><option value="REGULAR">Regular</option><option value="CAMP">Camp</option></select>'+
+    '<div class="row2"><div><label class="lbl">Start date</label><input class="inp" type="date" id="sfStart" data-in="sfd" value="'+s.start+'"></div><div><label class="lbl">Weeks (1–24)</label><input class="inp" type="number" min="1" max="24" id="sfWeeks" data-in="sfd" value="'+s.weeks+'" inputmode="numeric"></div></div>'+
+    '<label class="lbl">End date <span id="sfAuto" style="font-weight:500"></span></label><input class="inp" type="date" id="sfEnd" data-in="sfend" value="'+(s.end||'')+'">'+
+    '<div class="remark" id="sfInfo" style="margin-top:12px"></div>'+
+    '<label class="lbl">Notes (optional)</label><input class="inp" id="sfNotes" value="'+esc(s.notes)+'">'+
+    (isNew?'':'<label class="sw"><input type="checkbox" id="sfActive"'+(s.active?' checked':'')+'> Active student</label>')+
+    '<div class="sh-f"><button class="btn ghost" data-act="closeSheet">Cancel</button><button class="btn green" data-act="sfSave">Save student</button></div>');
+  $('#sfCourse').value=s.course;$('#sfType').value=s.type==='CAMP'?'CAMP':'REGULAR';sfInfo();
+}
+function sfInfo(recalc){
+  var c=$('#sfCourse').value,st=$('#sfStart').value,wEl=$('#sfWeeks'),el=$('#sfInfo');
+  if(SFM.custom){
+    var en=$('#sfEnd').value;
+    if(recalc===true&&st&&en&&en>=st)wEl.value=Math.ceil(((pd(en)-pd(st))/864e5+1)/7);   /* weeks come from the dates */
+    wEl.readOnly=true;
+  }else wEl.readOnly=false;
+  var w=Math.floor(+wEl.value);
+  if(SFM.custom&&st&&$('#sfEnd').value&&$('#sfEnd').value<st){el.textContent='The end date is before the start date.';return;}
+  if(!st||!(w>=1)){el.textContent='Enter a start date and the number of weeks.';return;}
+  if(w>24){el.textContent='That is more than 24 weeks. Please shorten the end date.';return;}
+  if(!SFM.custom)$('#sfEnd').value=calcEnd(st,w);
+  var end=$('#sfEnd').value;
+  $('#sfAuto').innerHTML=SFM.custom?'· weeks are calculated from the dates <button type="button" class="mini" data-act="sfAuto">Use automatic</button>':'· automatic from start date and weeks';
+  el.innerHTML='Ends <b>'+mdy(end)+'</b> · <b>'+w+' week'+(w>1?'s':'')+'</b> · needs <b>'+(w*PER[c].h)+' hrs</b> · up to <b>'+(w*PER[c].a)+' absent hrs</b> allowed ('+PER[c].a+' per week, based on weeks)';
+}
+IN.sfend=function(){SFM.custom=!!$('#sfEnd').value;sfInfo(true);};
+H.sfAuto=function(){SFM.custom=false;sfInfo();};
+IN.sfd=function(){sfInfo(true);};CH.sfc=function(){sfInfo();};
+H.sfSave=function(){
+  var body={id:SFM.id||undefined,name:$('#sfName').value,course:$('#sfCourse').value,type:$('#sfType').value,start:$('#sfStart').value,weeks:$('#sfWeeks').value,end:$('#sfEnd').value,notes:$('#sfNotes').value};
+  if($('#sfActive'))body.active=$('#sfActive').checked;
+  api('saveStudent',body).then(function(){closeSheet();toast('Student saved','ok');afterStudentChange();}).catch(fail);
+};
+
+/* bulk import students
+   Only the name is required. After the name, these can appear in any order:
+   course (Standard/Intensive), start date, end date, weeks, notes.
+   Defaults: Standard, next Monday, 4 weeks. */
+var BS=null;
+H.stBulk=function(){
+  BS={rows:[]};
+  openSheet('<div class="sh-h"><div><b>Bulk import students</b><span>Paste from Excel or Google Sheets, or upload a CSV</span></div><button class="x" data-act="closeSheet" aria-label="Close">×</button></div>'+
+    '<div class="hint" style="margin:0 0 8px">One student per line. Only the <b>Name</b> is required. Optional extras: <b>Course</b> (Standard/Intensive), <b>Camp</b> (for camp students), <b>Start date</b>, <b>End date</b>, <b>Weeks</b>. Missing values default to Standard, next Monday, and 4 weeks. Dates like 10/05/2026 are read as month/day/year.</div>'+
+    '<textarea class="inp" id="bsText" placeholder="John Wick&#10;Bruce Wayne\tIntensive\t10/12/2026\t8"></textarea>'+
+    '<div class="acts" style="margin-top:8px"><input type="file" id="bsFile" accept=".csv,.txt,.tsv" data-ch="bsFile"><button class="mini" data-act="bsExample">Insert example</button></div>'+
+    '<div id="bsOut"></div><div class="sh-f"><button class="btn ghost" data-act="bsParse">Check list</button><button class="btn green" data-act="bsGo" id="bsGo" disabled>Import</button></div>');
+};
+H.bsExample=function(){$('#bsText').value='John Wick\nBruce Wayne\tIntensive\t10/12/2026\t8\nClark Kent\tStandard\t10/05/2026\t10/30/2026';};
+CH.bsFile=function(el){var f=el.files[0];if(!f)return;var r=new FileReader();r.onload=function(){$('#bsText').value=String(r.result);H.bsParse();};r.readAsText(f);};
+function splitLine(l){
+  if(l.indexOf('\t')>-1)return l.split('\t').map(function(x){return x.trim();});
+  var o=[],cur='',q=false;
+  for(var i=0;i<l.length;i++){var ch=l[i];if(ch==='"'){q=!q;}else if(ch===','&&!q){o.push(cur.trim());cur='';}else cur+=ch;}
+  o.push(cur.trim());return o;
+}
+function parseDate(x){
+  x=String(x||'').trim();var m;
+  if((m=x.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/)))return iso(+m[1],+m[2],+m[3]);
+  if((m=x.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})$/))){var y=+m[3];if(y<100)y+=2000;return iso(y,+m[1],+m[2]);}
+  var d=new Date(x);return isNaN(d.getTime())?'':iso(d.getFullYear(),d.getMonth()+1,d.getDate());
+}
+H.bsParse=function(){
+  var lines=$('#bsText').value.split(/\r?\n/).filter(function(l){return l.trim();}),rows=[],def=nextMonday();
+  lines.forEach(function(l,i){
+    var c=splitLine(l);
+    if(i===0&&/^(student'?s?\s*)?name\b/i.test(c[0]))return; // header row
+    var r={name:c[0]||'',course:'STANDARD',start:'',weeks:4,notes:''},err='',dates=[],weeksSet=false,notes=[];
+    for(var j=1;j<c.length;j++){
+      var x=(c[j]||'').trim();if(!x)continue;
+      if(/^(camp|regular)$/i.test(x))r.type=/^c/i.test(x)?'CAMP':'REGULAR';
+      else if(/^(standard|intensive|std|int)$/i.test(x))r.course=/^i/i.test(x)?'INTENSIVE':'STANDARD';
+      else if(/^\d{1,2}$/.test(x)){r.weeks=+x;weeksSet=true;}
+      else if(/\d/.test(x)&&/[-\/]/.test(x)){var dd=parseDate(x);if(dd)dates.push(dd);else err=err||'Date not understood';}
+      else notes.push(x);
+    }
+    r.notes=notes.join(' ');
+    r.start=dates[0]||def;
+    if(dates[1]){
+      if(dates[1]<r.start)err=err||'End date is before start date';
+      else{r.end=dates[1];if(!weeksSet)r.weeks=Math.ceil(((pd(r.end)-pd(r.start))/864e5+1)/7);}
+    }
+    if(!r.name)err=err||'Name is missing';
+    else if(!(r.weeks>=1&&r.weeks<=24))err=err||'Weeks must be 1–24';
+    r.err=err;rows.push(r);
+  });
+  BS.rows=rows;var ok=rows.filter(function(r){return !r.err;}).length;
+  $('#bsOut').innerHTML=rows.length?'<div class="tw" style="margin-top:10px;max-height:240px;overflow:auto"><table class="rt" style="min-width:0"><tr><th>Name</th><th>Course</th><th>Start</th><th>Wks</th><th></th></tr>'+rows.map(function(r){return '<tr><td>'+esc(r.name)+'</td><td>'+COURSE[r.course]+'</td><td>'+(r.start?mdy(r.start):'')+'</td><td class="n">'+(r.weeks||'')+'</td><td style="color:'+(r.err?'#b3262a':'#235a10')+';font-weight:700">'+(r.err||'OK')+'</td></tr>';}).join('')+'</table></div><div class="hint">'+ok+' of '+rows.length+' ready to import.</div>':'<div class="hint">Nothing to import yet.</div>';
+  $('#bsGo').disabled=!ok;$('#bsGo').textContent=ok?'Import '+ok+' student'+(ok>1?'s':''):'Import';
+};
+H.bsGo=function(){
+  var rows=BS.rows.filter(function(r){return !r.err;});
+  api('bulkAddStudents',{rows:rows}).then(function(r){
+    closeSheet();S.list=null;
+    toast('Added '+r.added+' student'+(r.added===1?'':'s')+(r.skipped.length?' · skipped '+r.skipped.length:''),r.added?'ok':'err');
+    if(r.skipped.length)openSheet('<div class="sh-h"><div><b>Skipped rows</b><span>These were not imported</span></div><button class="x" data-act="closeSheet">×</button></div><div class="list">'+r.skipped.map(function(x){return '<div class="li"><div>'+esc(x.name||'(no name)')+'<small>Row '+x.line+'</small></div><span class="chip c-OFF-TRACK">'+esc(x.reason)+'</span></div>';}).join('')+'</div>');
+    if(S.tab==='students'||S.tab==='home')VIEWS[S.tab]();
+  }).catch(fail);
+};
+
+/* ---------- Student profile ---------- */
+var P=null;
+H.prof=function(el){openProfile(el.dataset.id);};
+function openProfile(id,view,anchor){
+  P={id:id,view:view||'month',anchor:anchor||null,rec:null,map:{}};
+  P.sh=openSheet('<div class="loading">Loading…</div>',{full:true});
+  loadProfile(true);
+}
+function loadProfile(first){
+  return api('getStudentRecord',{id:P.id}).then(function(r){
+    P.rec=r;P.map={};r.rows.forEach(function(x){P.map[x[0]+'|'+x[1]]=x[2];});
+    if(!P.anchor){var s=r.student;P.anchor=clamp(today(),s.start,s.end);}
+    drawProfile();
+  }).catch(function(e){if(first)closeSheet();fail(e);});
+}
+function profRange(){
+  var a=P.anchor,s=P.rec.student;
+  if(P.view==='day')return [a,a];
+  if(P.view==='week'){var m=monday(a);return [m,weekEnd(m)];}
+  if(P.view==='month')return [monthStart(a),monthEnd(a)];
+  return [s.start,s.end];
+}
+function profLabel(){
+  var a=P.anchor;
+  if(P.view==='day')return mdy(a);
+  if(P.view==='week'){var m=monday(a);return mdy(m)+' – '+mdy(weekEnd(m));}
+  if(P.view==='month')return monthName(a);
+  return mdy(P.rec.student.start)+' – '+mdy(P.rec.student.end);
+}
+function idCard(r,live){
+  var s=r.student,t=r.stats;
+  return '<div class="idcard"><div class="idn">'+esc(s.name)+(s.active?'':' (archived)')+'</div><div class="idg"><div><span>Course</span><b>'+COURSE[s.course]+'</b></div><div><span>Status</span><b class="tx-'+t.status+'">'+t.status+'</b></div><div><span>Cert. eligibility</span><b>'+(t.cert||'PENDING')+'</b></div><div><span>Start date</span><b>'+mdy(s.start)+'</b></div><div><span>End date</span><b>'+mdy(s.end)+'</b></div></div></div>';
+}
+function tiles(t){
+  var pct=t.allowed?Math.min(100,Math.round(t.absent/t.allowed*100)):0;
+  return '<div class="tiles"><div class="tile"><b>'+t.absent+' / '+t.allowed+'</b><span>Absent hrs used</span><div class="meter '+t.status+'" style="margin-top:6px"><i style="width:'+pct+'%"></i></div></div><div class="tile"><b>'+t.attended+' / '+t.required+'</b><span>Hrs attended</span></div><div class="tile"><b>'+t.late+'</b><span>Late hrs'+(t.lateAbs&&!S.boot.lateAbsent?' ('+t.lateAbs+' counted absent)':'')+'</span></div><div class="tile"><b>'+t.excused+'</b><span>Excused hrs</span></div></div>';
+}
+function drawProfile(){
+  var r=P.rec,rg=profRange(),dates=weekdays(rg[0],rg[1]);
+  P.sh.innerHTML='<div class="sh-h"><div><b>Student record</b><span>Tap any box to correct attendance</span></div><div class="acts"><button class="btn ghost sm" data-act="pPrint">Print / PDF</button><button class="btn ghost sm" data-act="pEdit">Edit student</button><button class="x" data-act="closeSheet" aria-label="Close">×</button></div></div>'+
+    idCard(r)+'<div class="remark">'+esc(r.remark)+'</div>'+tiles(r.stats)+
+    '<div class="seg" id="pseg">'+[['day','Day'],['week','Week'],['month','Month'],['course','Whole course']].map(function(v){return '<button data-act="pView" data-v="'+v[0]+'" class="'+(P.view===v[0]?'on':'')+'">'+v[1]+'</button>';}).join('')+'</div>'+
+    '<button class="btn green sm" data-act="pAllP" style="margin-left:10px">Mark all as Present</button>'+
+    '<div class="pnav">'+(P.view==='course'?'':'<div class="pill"><button data-act="pNav" data-n="-1" aria-label="Previous">‹</button><b>'+profLabel()+'</b><button data-act="pNav" data-n="1" aria-label="Next">›</button></div>')+'</div>'+
+    (dates.length?recTable(dates,function(d,h){return P.map[d+'|'+h];},true):'<div class="empty">No class days in this range.</div>')+legend();
+}
+H.pView=function(el){P.view=el.dataset.v;drawProfile();};
+H.pNav=function(el){
+  var n=+el.dataset.n;
+  if(P.view==='day')P.anchor=nextWd(P.anchor,n);
+  else if(P.view==='week')P.anchor=add(P.anchor,7*n);
+  else P.anchor=addMonth(P.anchor,n);
+  drawProfile();
+};
+H.pEdit=function(){var s=P.rec.student;openStudentForm(s);};
+H.pCell=function(el){
+  var d=el.dataset.d,h=+el.dataset.h,s=P.rec.student;
+  markSheet({title:s.name,sub:longD(d)+' · '+HL[h]+'. Tap again to clear.',students:[{id:s.id,name:'Attendance'}],
+    get:function(){return P.map[d+'|'+h]||'';},
+    apply:function(l){var st=l[0].st;if(st)P.map[d+'|'+h]=st;else delete P.map[d+'|'+h];saveEntries([{date:d,hour:h,studentId:s.id,status:st}]).then(function(){S.list=null;return loadProfile();});}
+  });
+};
+H.pPrint=function(){
+  var r=P.rec,rg=profRange(),dates=weekdays(rg[0],rg[1]);
+  printHtml('<div class="pr">'+idCard(r)+'<p><b>Remarks:</b> '+esc(r.remark)+'</p>'+tiles(r.stats)+'<p><b>'+profLabel()+'</b></p>'+recTable(dates,function(d,h){return P.map[d+'|'+h];},false)+legend()+'<p style="color:#64747e;font-size:12px">Printed '+mdy(today())+'</p></div>');
+};
+/* ---------- Mark all as Present (student record). Fills only EMPTY class hours, up to today. ---------- */
+H.pAllP=function(){
+  var s=P.rec.student,rg=profRange(),from=clamp(rg[0],s.start,s.end),to=clamp(rg[1],s.start,s.end),t=today();
+  if(to>t)to=t;
+  if(from>to){toast('Nothing to mark: this range is in the future or outside the course dates.','err');return;}
+  P.mark={from:from,to:to,perDay:Math.round(P.rec.stats.hoursPerWeek/5)};
+  P.mark.sh=openSheet('<div class="sh-h"><div><b>Mark all as Present</b><span>'+esc(s.name)+' · '+profLabel()+'</span></div><button class="x" data-act="closeSheet" aria-label="Close">×</button></div>'+
+    '<div class="remark" id="pmInfo">Checking…</div>'+
+    '<label class="lbl">Class hours per day</label><input class="inp" type="number" min="1" max="8" id="pmPer" data-in="pmper" value="'+P.mark.perDay+'" inputmode="numeric">'+
+    '<div class="hint">Default is '+P.mark.perDay+' for '+COURSE[s.course]+' ('+P.rec.stats.hoursPerWeek+' hrs a week), so attended hours do not go over the course hours. Hours already marked count toward this number. Weekends, holidays, future dates and anything already marked (P, A, L or E) are left as they are.</div>'+
+    '<div class="sh-f"><button class="btn ghost" data-act="closeSheet">Cancel</button><button class="btn green" id="pmGo" data-act="pmGo" disabled>Mark present</button></div>');
+  pMarkPreview();
+};
+IN.pmper=function(el){var v=Math.floor(+el.value);if(v>=1&&v<=8){P.mark.perDay=v;pMarkPreview();}};
+function pMarkPreview(){
+  var m=P.mark;
+  api('markAllPresent',{id:P.id,from:m.from,to:m.to,perDay:m.perDay,dry:true}).then(function(r){
+    var info=$('#pmInfo'),go=$('#pmGo');if(!info||!go)return;
+    m.n=r.marked;
+    info.innerHTML=r.marked?'This will mark <b>'+r.marked+' empty class hour'+(r.marked===1?'':'s')+'</b> as Present over <b>'+r.days+' day'+(r.days===1?'':'s')+'</b>, from '+mdy(m.from)+' to '+mdy(m.to)+'.':'There are no empty class hours to mark from '+mdy(m.from)+' to '+mdy(m.to)+'.';
+    go.disabled=!r.marked;go.textContent=r.marked?'Mark '+r.marked+' hour'+(r.marked===1?'':'s')+' present':'Mark present';
+  }).catch(fail);
+}
+H.pmGo=function(){
+  var m=P.mark;$('#pmGo').disabled=true;
+  api('markAllPresent',{id:P.id,from:m.from,to:m.to,perDay:m.perDay}).then(function(r){
+    closeSheet();S.list=null;toast('Marked '+r.marked+' hour'+(r.marked===1?'':'s')+' present','ok');loadProfile();
+  }).catch(fail);
+};
+
+/* ---------- Attendance (daily / weekly / monthly) ---------- */
+var AT={mode:'day',date:null,q:'',data:null,map:{},undo:[],viewKey:''};
+function attRange(){
+  if(AT.mode==='day')return [AT.date,AT.date];
+  if(AT.mode==='week'){var m=monday(AT.date);return [m,weekEnd(m)];}
+  return [monthStart(AT.date),monthEnd(AT.date)];
+}
+function attLabel(){
+  if(AT.mode==='day')return mdy(AT.date);
+  if(AT.mode==='week'){var m=monday(AT.date);return mdy(m)+' – '+mdy(weekEnd(m));}
+  return monthName(AT.date);
+}
+VIEWS.att=function(){
+  if(!AT.date){var t=today();AT.date=lastClassDay(t);}
+  loadAtt();
+};
+function loadAtt(){
+  var r=attRange();
+  var vk=AT.mode+'|'+r.join('|');if(AT.viewKey!==vk){AT.undo=[];AT.viewKey=vk;}   /* Undo only covers the view on screen */
+  return api('getAttendanceRange',{from:r[0],to:r[1]}).then(function(d){
+    AT.data=d;AT.map={};d.rows.forEach(function(x){AT.map[x[2]+'|'+x[0]+'|'+x[1]]=x[3];});
+    if(S.tab==='att')drawAtt();
+  }).catch(fail);
+}
+function drawAtt(){
+  content('<div class="ph"><h2>Attendance</h2><div class="seg">'+[['day','Daily'],['week','Weekly'],['month','Monthly']].map(function(m){return '<button data-act="attMode" data-m="'+m[0]+'" class="'+(AT.mode===m[0]?'on':'')+'">'+m[1]+'</button>';}).join('')+'</div></div>'+
+    '<div class="bars"><input class="search" data-in="attq" placeholder="Search student\'s name" value="'+esc(AT.q)+'"><div class="pill" style="flex:0 1 330px;margin:0"><button data-act="attNav" data-n="-1" aria-label="Previous">‹</button><b>'+attLabel()+'</b><button data-act="attNav" data-n="1" aria-label="Next">›</button></div><button class="btn ghost sm" data-act="attToday">Today</button>'+(AT.mode==='day'?'<button class="btn ghost sm" id="aUndo" data-act="aUndo"'+(AT.undo.length?'':' disabled')+'>Undo</button>':'')+'</div><div id="attBody"></div>');
+  drawAttBody();
+}
+function attStudents(){
+  var r=attRange(),q=AT.q.trim().toLowerCase(),has={};
+  AT.data.rows.forEach(function(x){has[x[2]]=1;});
+  return AT.data.students.filter(function(s){
+    if(q&&s.name.toLowerCase().indexOf(q)<0)return false;
+    if(has[s.id])return true;
+    return s.active&&s.start<=r[1]&&s.end>=r[0];
+  });
+}
+function hrCounts(sid,dates){
+  var c={P:0,A:0,L:0,E:0};
+  dates.forEach(function(d){allHrs().forEach(function(h){var st=AT.map[sid+'|'+d+'|'+h];if(st)c[st]++;});});
+  return c;
+}
+function drawAttBody(){
+  var list=attStudents(),o='';
+  if(!list.length){$('#attBody').innerHTML='<div class="card empty"><b>No students to show</b>'+(AT.q?'Try a different name.':'Students appear here while their course is running.')+'</div>';return;}
+  if(AT.mode==='day'){
+    var d=AT.date,hl=holOf(d);
+    if(isOff(d))o+='<div class="banner">No class on this day'+(hl?' · '+esc(hl.label):'')+'. You can still correct records if needed.</div>';
+    o+='<div class="tw"><table class="tg dg"><colgroup><col style="width:150px">'+hrs().map(function(h){return (h===13&&lunchShown()?'<col style="width:30px">':'')+'<col>';}).join('')+'</colgroup><thead><tr><th class="c-nm">NAME OF STUDENTS</th>'+hourHead()+'</tr></thead><tbody>'+
+      list.map(function(s){return '<tr><th class="c-nm" data-act="prof2" data-id="'+esc(s.id)+'" title="'+esc(s.name)+'">'+esc(s.name.toUpperCase())+'</th>'+hourCells(function(h){var st=AT.map[s.id+'|'+d+'|'+h]||'';return '<td class="cell '+(st?'st-'+st:'')+'" data-act="aCell" data-id="'+esc(s.id)+'" data-d="'+d+'" data-h="'+h+'">'+st+'</td>';})+'</tr>';}).join('')+'</tbody></table></div>'+legend()+'<div class="hint">Tap a box to change it: <b>P</b> → <b>A</b> → <b>L</b> → <b>E</b> → blank. Tap a name to open the student.</div>';
+  }else if(AT.mode==='week'){
+    var ds=weekdays(monday(AT.date),weekEnd(monday(AT.date)));
+    o+='<div class="tw"><table class="tg"><colgroup><col style="width:150px">'+ds.map(function(){return '<col>';}).join('')+'</colgroup><thead><tr><th class="c-nm">NAME OF STUDENTS</th>'+ds.map(function(d){return '<th data-act="attDay" data-d="'+d+'" style="cursor:pointer" class="'+(isOff(d)?'off':'')+'">'+DOW[dow(d)]+'<small>'+d.slice(8)+'</small></th>';}).join('')+'</tr></thead><tbody>'+
+      list.map(function(s){return '<tr><th class="c-nm" data-act="prof2" data-id="'+esc(s.id)+'" title="'+esc(s.name)+'">'+esc(s.name.toUpperCase())+'</th>'+ds.map(function(d){
+        if(isOff(d))return '<td class="off">–</td>';
+        var c=hrCounts(s.id,[d]),bad=c.A+(S.boot.lateAbsent?c.L:0),good=c.P+c.E+(S.boot.lateAbsent?0:c.L);
+        return '<td class="cell '+(bad?'st-A':(good?'st-P':''))+'" data-act="attDay" data-d="'+d+'" title="P '+c.P+' · A '+c.A+' · L '+c.L+' · E '+c.E+'">'+(bad?bad+'A':(good?good+'P':''))+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table></div><div class="hint">Numbers are class hours. Tap a day to open the daily view.</div>';
+  }else{
+    var md=allDays(monthStart(AT.date),monthEnd(AT.date));
+    o+='<div class="tw"><table class="tg"><colgroup><col style="width:150px"><col><col><col><col><col></colgroup><thead><tr><th class="c-nm">NAME OF STUDENTS</th><th>Present</th><th>Excused</th><th>Late</th><th>Absent</th><th>Rate</th></tr></thead><tbody>'+
+      list.map(function(s){var c=hrCounts(s.id,md),tot=c.P+c.A+c.L+c.E,la=lateAbs(c.L),good=c.P+c.E+c.L-la,ab=c.A+(S.boot.lateAbsent?0:la);
+        return '<tr><th class="c-nm" data-act="prof3" data-id="'+esc(s.id)+'" title="'+esc(s.name)+'">'+esc(s.name.toUpperCase())+'</th><td>'+c.P+'</td><td>'+c.E+'</td><td>'+c.L+'</td><td class="'+(ab?'st-A':'')+'" style="font-weight:800">'+ab+'</td><td>'+(tot?Math.round(good/tot*100)+'%':'–')+'</td></tr>';}).join('')+'</tbody></table></div><div class="hint">Class hours recorded in '+monthName(AT.date)+'.'+(S.boot.lateThree&&!S.boot.lateAbsent?' Every 3 lates count as 1 absent.':'')+' Tap a name for the full record.</div>';
+  }
+  $('#attBody').innerHTML=o;
+}
+IN.attq=function(el){AT.q=el.value;drawAttBody();};
+H.attMode=function(el){AT.mode=el.dataset.m;if(AT.mode==='day'&&isOff(AT.date)&&dow(AT.date)>0&&dow(AT.date)<6){}loadAtt();};
+H.attNav=function(el){
+  var n=+el.dataset.n;
+  if(AT.mode==='day')AT.date=nextWd(AT.date,n);else if(AT.mode==='week')AT.date=add(AT.date,7*n);else AT.date=addMonth(AT.date,n);
+  loadAtt();
+};
+H.attToday=function(){var t=today();AT.date=lastClassDay(t);loadAtt();};
+H.attDay=function(el){AT.mode='day';AT.date=el.dataset.d;loadAtt();};
+H.prof2=function(el){openProfile(el.dataset.id,'day',AT.date);};
+H.prof3=function(el){openProfile(el.dataset.id,'month',AT.date);};
+H.aCell=function(el){   /* tap to cycle, same as the teacher screen */
+  var id=el.dataset.id,d=el.dataset.d,h=+el.dataset.h,cur=AT.map[id+'|'+d+'|'+h]||'';
+  atMark([{id:id,date:d,hour:h,prev:cur,st:CYCLE[(CYCLE.indexOf(cur)+1)%CYCLE.length]}]);
+};
+var atQ=Promise.resolve();
+function atSave(items,key){   /* saves go out in order; key = 'st' (new) or 'prev' (undo) */
+  var entries=items.map(function(c){return {date:c.date,hour:c.hour,studentId:c.id,status:c[key]};});
+  atQ=atQ.then(function(){return api('saveAttendance',{entries:entries});}).catch(function(e){fail(e);return loadAtt();});
+}
+function atSet(c,key){var k=c.id+'|'+c.date+'|'+c.hour;if(c[key])AT.map[k]=c[key];else delete AT.map[k];}
+function atBtn(){var b=$('#aUndo');if(b)b.disabled=!AT.undo.length;}
+function atMark(changes){
+  changes.forEach(function(c){atSet(c,'st');});
+  AT.undo.push(changes);if(AT.undo.length>30)AT.undo.shift();
+  S.list=null;drawAttBody();atBtn();atSave(changes,'st');
+}
+H.aUndo=function(){
+  if(!AT.undo.length)return;
+  var changes=AT.undo.pop();
+  changes.forEach(function(c){atSet(c,'prev');});
+  S.list=null;drawAttBody();atBtn();atSave(changes,'prev');
+};
+
+/* ---------- Schedules (admin: check and edit any teacher's week) ---------- */
+VIEWS.sched=function(){
+  api('teacherList').then(function(list){
+    T.teachers=list;
+    if(!list.length){content('<div class="ph"><h2>Teacher schedules</h2></div><div class="card empty"><b>No teachers yet</b>Add a teacher first, then you can check and edit their schedule here.</div>');return;}
+    if(!list.some(function(x){return x.id===T.tid;}))T.tid=(list.filter(function(x){return x.active;})[0]||list[0]).id;
+    return loadWeek(T.ws||monday(today()));
+  }).catch(fail);
+};
+function drawSched(){
+  content('<div class="ph"><h2>Teacher schedules</h2></div>'+
+    '<div class="bars"><select class="inp" data-ch="tvSel" style="flex:1 1 220px" aria-label="Choose a teacher">'+T.teachers.map(function(x){return '<option value="'+esc(x.id)+'"'+(x.id===T.tid?' selected':'')+'>'+esc(x.name)+(x.active?'':' (inactive)')+'</option>';}).join('')+'</select></div>'+
+    weekBar()+weekEmpty()+actionBar()+gridHtml());
+}
+
+/* ---------- Teachers ---------- */
+VIEWS.teachers=function(){
+  api('listTeachers').then(function(list){
+    var act=list.filter(function(t){return t.active;}),old=list.filter(function(t){return !t.active;});
+    function li(t){return '<div class="li"><div><b>'+esc(t.name)+'</b>'+(t.active?'':'<small>Inactive</small>')+'</div><div class="acts"><span class="pin" title="Login PIN">'+esc(t.pin)+'</span><button class="mini" data-act="tCopy" data-pin="'+esc(t.pin)+'">Copy</button><button class="mini" data-act="tRename" data-id="'+esc(t.id)+'" data-name="'+esc(t.name)+'">Rename</button><button class="mini" data-act="tReset" data-id="'+esc(t.id)+'" data-name="'+esc(t.name)+'">New PIN</button><button class="mini" data-act="tToggle" data-id="'+esc(t.id)+'" data-name="'+esc(t.name)+'" data-on="'+(t.active?1:0)+'">'+(t.active?'Deactivate':'Activate')+'</button></div></div>';}
+    content('<div class="ph"><h2>Teachers</h2><div class="acts"><button class="btn green sm" data-act="tNew">+ Add teacher</button><button class="btn ghost sm" data-act="tBulk">Bulk import</button></div></div>'+
+      (list.length?'<div class="card list">'+act.map(li).join('')+old.map(li).join('')+'</div><div class="hint">Teachers sign in by picking their name and typing their 4-digit PIN.</div>':'<div class="card empty"><b>No teachers yet</b>Add a teacher and a 4-digit PIN is created automatically.</div>'));
+  }).catch(fail);
+};
+H.tCopy=function(el){copyText(el.dataset.pin);};
+H.tNew=function(){
+  openSheet('<div class="sh-h"><div><b>Add teacher</b><span>A 4-digit PIN is created for you</span></div><button class="x" data-act="closeSheet">×</button></div><label class="lbl">Teacher name</label><input class="inp" id="tnName" autocomplete="off"><div class="sh-f"><button class="btn ghost" data-act="closeSheet">Cancel</button><button class="btn green" data-act="tnSave">Add teacher</button></div>');
+};
+H.tnSave=function(){
+  api('saveTeacher',{name:$('#tnName').value}).then(function(r){
+    closeSheet();
+    openSheet('<div class="sh-h"><div><b>Teacher added</b><span>Share this PIN with '+esc(r.name)+'</span></div><button class="x" data-act="closeSheet">×</button></div><div style="text-align:center;margin:18px 0"><div style="font-weight:700;margin-bottom:8px">'+esc(r.name)+'</div><span class="pin" style="font-size:34px;padding:8px 18px">'+esc(r.pin)+'</span></div><div class="sh-f"><button class="btn ghost" data-act="tCopy" data-pin="'+esc(r.pin)+'">Copy PIN</button><button class="btn green" data-act="closeSheet">Done</button></div>');
+    VIEWS.teachers();
+  }).catch(fail);
+};
+H.tRename=function(el){
+  openSheet('<div class="sh-h"><div><b>Rename teacher</b></div><button class="x" data-act="closeSheet">×</button></div><input class="inp" id="trName" value="'+esc(el.dataset.name)+'"><div class="sh-f"><button class="btn ghost" data-act="closeSheet">Cancel</button><button class="btn green" data-act="trSave" data-id="'+esc(el.dataset.id)+'">Save</button></div>');
+};
+H.trSave=function(el){api('saveTeacher',{id:el.dataset.id,name:$('#trName').value}).then(function(){closeSheet();toast('Saved','ok');VIEWS.teachers();}).catch(fail);};
+H.tReset=function(el){
+  if(!confirm('Create a new PIN for '+el.dataset.name+'? Their old PIN will stop working.'))return;
+  api('resetPin',{id:el.dataset.id}).then(function(r){
+    openSheet('<div class="sh-h"><div><b>New PIN</b><span>'+esc(el.dataset.name)+'</span></div><button class="x" data-act="closeSheet">×</button></div><div style="text-align:center;margin:18px 0"><span class="pin" style="font-size:34px;padding:8px 18px">'+esc(r.pin)+'</span></div><div class="sh-f"><button class="btn ghost" data-act="tCopy" data-pin="'+esc(r.pin)+'">Copy PIN</button><button class="btn green" data-act="closeSheet">Done</button></div>');
+    VIEWS.teachers();
+  }).catch(fail);
+};
+H.tToggle=function(el){
+  var on=el.dataset.on==='1';
+  if(on&&!confirm('Deactivate '+el.dataset.name+'? They will no longer be able to sign in. Past records are kept.'))return;
+  api('saveTeacher',{id:el.dataset.id,name:el.dataset.name,active:!on}).then(function(){toast(on?'Teacher deactivated':'Teacher activated','ok');VIEWS.teachers();}).catch(fail);
+};
+H.tBulk=function(){
+  openSheet('<div class="sh-h"><div><b>Bulk import teachers</b><span>One name per line. PINs are created automatically.</span></div><button class="x" data-act="closeSheet">×</button></div><textarea class="inp" id="tbText" placeholder="Teacher Zeus&#10;Teacher Hera&#10;Teacher Apollo"></textarea><div id="tbOut"></div><div class="sh-f"><button class="btn ghost" data-act="closeSheet">Cancel</button><button class="btn green" data-act="tbGo">Import teachers</button></div>');
+};
+H.tbGo=function(){
+  var names=$('#tbText').value.split(/\r?\n|,/).map(function(x){return x.trim();}).filter(Boolean);
+  if(!names.length){toast('Type at least one name.','err');return;}
+  api('bulkAddTeachers',{names:names}).then(function(r){
+    var tsv=r.added.map(function(a){return a.name+'\t'+a.pin;}).join('\n');
+    closeSheet();
+    openSheet('<div class="sh-h"><div><b>Added '+r.added.length+' teacher'+(r.added.length===1?'':'s')+'</b><span>Share each PIN with its teacher</span></div><button class="x" data-act="closeSheet">×</button></div><div class="list">'+r.added.map(function(a){return '<div class="li"><b>'+esc(a.name)+'</b><span class="pin">'+esc(a.pin)+'</span></div>';}).join('')+r.skipped.map(function(x){return '<div class="li"><span>'+esc(x.name)+'</span><span class="chip c-OFF-TRACK">'+esc(x.reason)+'</span></div>';}).join('')+'</div><div class="sh-f"><button class="btn ghost" data-act="tCopy" data-pin="'+esc(tsv)+'">Copy list</button><button class="btn green" data-act="closeSheet">Done</button></div>');
+    VIEWS.teachers();
+  }).catch(fail);
+};
+
+/* ---------- Holidays ---------- */
+VIEWS.cal=function(){
+  var list=Object.keys(S.hol).sort().map(function(d){return S.hol[d];});
+  var t=today();
+  content('<div class="ph"><h2>Holidays and class changes</h2></div>'+
+    '<div class="card"><div class="row2"><div><label class="lbl" style="margin-top:0">Date</label><input class="inp" type="date" id="hDate"></div><div><label class="lbl" style="margin-top:0">Name</label><input class="inp" id="hLabel" placeholder="e.g. National Heroes Day"></div></div>'+
+    '<label class="lbl">What happens on this day?</label><select class="inp" id="hType"><option value="NO_CLASS">No class</option><option value="CLASS">Still have class</option></select>'+
+    '<div class="sh-f"><button class="btn green" data-act="hSave" style="flex:none">Save day</button></div><div class="hint">Saturdays and Sundays never have class. Add a "Still have class" day to keep a holiday open for attendance.</div></div>'+
+    '<div class="ph" style="margin-top:18px"><h2>Saved days</h2></div>'+
+    (list.length?'<div class="card list">'+list.map(function(h){return '<div class="li" style="'+(h.date<t?'opacity:.6':'')+'"><div><b>'+longD(h.date)+', '+h.date.slice(0,4)+'</b><small>'+esc(h.label)+'</small></div><div class="acts"><span class="chip '+(h.type==='CLASS'?'c-ON-TRACK':'c-ARCH')+'">'+(h.type==='CLASS'?'Class':'No class')+'</span><button class="mini" data-act="hEdit" data-d="'+h.date+'">Edit</button><button class="mini" data-act="hDel" data-d="'+h.date+'">Remove</button></div></div>';}).join('')+'</div>':'<div class="card empty"><b>No holidays saved</b>Every weekday is a class day until you add one here.</div>'));
+};
+H.hSave=function(){
+  var d=$('#hDate').value;if(!d){toast('Pick a date.','err');return;}
+  api('saveHoliday',{date:d,label:$('#hLabel').value,type:$('#hType').value}).then(function(l){setHol(l);toast('Saved','ok');VIEWS.cal();}).catch(fail);
+};
+H.hEdit=function(el){var h=S.hol[el.dataset.d];$('#hDate').value=h.date;$('#hLabel').value=h.label;$('#hType').value=h.type;window.scrollTo(0,0);};
+H.hDel=function(el){if(!confirm('Remove this day from the list?'))return;api('deleteHoliday',{date:el.dataset.d}).then(function(l){setHol(l);VIEWS.cal();}).catch(fail);};
+
+/* ---------- Reports ---------- */
+var RP={mode:'all',sel:{},q:'',details:true,from:'',to:'',out:null};
+VIEWS.reports=function(){
+  if(!RP.from){RP.from=monthStart(today());RP.to=today();}
+  loadList().then(drawReports).catch(fail);
+};
+function rpChecks(){
+  var q=RP.q.trim().toLowerCase();
+  var l=S.list.students.filter(function(s){return s.active&&(!q||s.name.toLowerCase().indexOf(q)>-1);});
+  return l.map(function(s){var on=RP.sel[s.id];return '<div class="prow'+(on?' on':'')+'" data-act="rpTog" data-id="'+esc(s.id)+'"><i>'+(on?'✓':'')+'</i><span>'+esc(s.name)+'</span><small>'+COURSE[s.course]+(s.type==='CAMP'?' · Camp':'')+'</small></div>';}).join('')||'<div class="empty">No students.</div>';
+}
+function drawReports(){
+  content('<div class="ph"><h2>Reports</h2></div><div class="card">'+
+    '<label class="lbl" style="margin-top:0">Who is in the report?</label><div class="seg"><button data-act="rpMode" data-m="all" class="'+(RP.mode==='all'?'on':'')+'">All active students</button><button data-act="rpMode" data-m="sel" class="'+(RP.mode==='sel'?'on':'')+'">Choose students</button></div>'+
+    (RP.mode==='sel'?'<input class="search" style="margin-top:10px" data-in="rpq" placeholder="Search student\'s name" value="'+esc(RP.q)+'"><div class="chk" id="rpChk">'+rpChecks()+'</div><div class="hint" id="rpCnt">'+Object.keys(RP.sel).length+' selected</div>':'')+
+    '<label class="sw" style="margin-bottom:0"><input type="checkbox" id="rpDet" data-ch="rpdet"'+(RP.details?' checked':'')+'> Include the daily attendance log</label>'+
+    '<div class="row2" id="rpDates" style="'+(RP.details?'':'display:none')+'"><div><label class="lbl">Log from</label><input class="inp" type="date" id="rpFrom" data-ch="rpd" value="'+RP.from+'"></div><div><label class="lbl">Log to</label><input class="inp" type="date" id="rpTo" data-ch="rpd" value="'+RP.to+'"></div></div>'+
+    '<div class="hint">Eligibility and remarks always use the whole course so far. The date range only limits the daily log.</div>'+
+    '<div class="sh-f" style="flex-wrap:wrap"><button class="btn ghost" data-act="rpGo">Preview</button><button class="btn ghost" data-act="rpPrint">Print / Save PDF</button><button class="btn green" data-act="rpSheet">'+(API_URL?'Download CSV':'Save to Google Sheets')+'</button></div></div><div id="rpOut"></div>');
+  if(RP.out)$('#rpOut').innerHTML='<div class="rep">'+reportHtml(RP.out)+'</div>';
+}
+H.rpMode=function(el){RP.mode=el.dataset.m;drawReports();};
+H.rpTog=function(el){var id=el.dataset.id;if(RP.sel[id])delete RP.sel[id];else RP.sel[id]=1;$('#rpChk').innerHTML=rpChecks();$('#rpCnt').textContent=Object.keys(RP.sel).length+' selected';};
+IN.rpq=function(el){RP.q=el.value;$('#rpChk').innerHTML=rpChecks();};
+CH.rpdet=function(el){RP.details=el.checked;$('#rpDates').style.display=RP.details?'':'none';};
+CH.rpd=function(){RP.from=$('#rpFrom').value;RP.to=$('#rpTo').value;};
+function rpPayload(){
+  if(RP.mode==='sel'&&!Object.keys(RP.sel).length){toast('Choose at least one student.','err');return null;}
+  RP.from=($('#rpFrom')||{}).value||RP.from;RP.to=($('#rpTo')||{}).value||RP.to;
+  return {ids:RP.mode==='sel'?Object.keys(RP.sel):[],details:RP.details,from:RP.from,to:RP.to};
+}
+function rpFetch(){var p=rpPayload();if(!p)return Promise.reject({message:'Choose at least one student.'});return api('report',p).then(function(d){RP.out=d;$('#rpOut').innerHTML='<div class="rep">'+reportHtml(d)+'</div>';return d;});}
+H.rpGo=function(){rpFetch().catch(fail);};
+H.rpPrint=function(){rpFetch().then(function(d){printHtml(reportHtml(d));}).catch(fail);};
+H.rpSheet=function(){
+  var p=rpPayload();if(!p)return;
+  api('exportReport',p).then(function(r){
+    if(r.csv){
+      var a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+r.csv],{type:'text/csv;charset=utf-8'}));a.download=r.name;
+      document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},500);toast('Report downloaded','ok');return;
+    }
+    openSheet('<div class="sh-h"><div><b>Report saved</b><span>A new Google Sheet was created in your Drive</span></div><button class="x" data-act="closeSheet">×</button></div><p style="word-break:break-word">'+esc(r.name)+'</p><div class="sh-f"><button class="btn ghost" data-act="closeSheet">Close</button><a class="btn green" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center" href="'+esc(r.url)+'" target="_blank" rel="noopener">Open in Google Sheets</a></div>');
+  }).catch(fail);
+};
+function reportHtml(d){
+  var o='<div class="pr"><h2>'+esc(d.org)+' · Attendance Report</h2><p>Generated '+esc(d.generatedAt)+' · '+d.items.length+' student'+(d.items.length===1?'':'s')+' · '+esc(d.lateNote||(d.lateAbsent?'Late counts as absent':'Late counts as present'))+'</p>';
+  if(!d.items.length)return o+'<div class="empty">No students match.</div></div>';
+  o+='<table class="rt"><tr><th>#</th><th>Student</th><th>Course</th><th>Start – End</th><th>Attended / Required hrs</th><th>Absent hrs</th><th>Allowed</th><th>Left</th><th>Status</th><th>Certificate</th><th>Remarks</th></tr>'+
+    d.items.map(function(it,i){var s=it.student,t=it.stats;
+      return '<tr><td class="n">'+(i+1)+'</td><td><b>'+esc(s.name)+'</b></td><td>'+COURSE[s.course]+'<br>'+s.weeks+' wk'+(s.weeks>1?'s':'')+'</td><td>'+mdy(s.start)+'<br>'+mdy(s.end)+'</td><td class="n">'+t.attended+' / '+t.required+'</td><td class="n">'+t.absent+'</td><td class="n">'+t.allowed+'</td><td class="n">'+t.remaining+'</td><td>'+chip(t.status)+'</td><td>'+chip(t.status,t.cert||'PENDING')+'</td><td>'+esc(it.remark)+'</td></tr>';}).join('')+'</table>';
+  if(d.details){
+    o+='<h3 style="margin-top:22px">Daily attendance log'+(d.from||d.to?' · '+(d.from?mdy(d.from):'start')+' to '+(d.to?mdy(d.to):'today'):'')+'</h3>';
+    d.items.forEach(function(it){
+      var m={},ds={};(it.log||[]).forEach(function(x){m[x[0]+'|'+x[1]]=x[2];ds[x[0]]=1;});
+      var dates=Object.keys(ds).sort();
+      o+='<div class="pr-sec"><h3>'+esc(it.student.name)+'</h3>'+(dates.length?recTable(dates,function(dd,h){return m[dd+'|'+h];},false):'<p>No attendance recorded in this range.</p>')+'</div>';
+    });
+    o+=legend();
+  }
+  return o+'</div>';
+}
+
+/* ---------- Settings ---------- */
+VIEWS.settings=function(){
+  api('getSettings').then(function(s){
+    content('<div class="ph"><h2>Settings</h2></div><div class="card"><label class="lbl" style="margin-top:0">School name</label><input class="inp" id="seOrg" value="'+esc(s.org)+'">'+
+      '<label class="sw"><input type="checkbox" id="seLate" data-ch="seLateMode"'+(s.lateAbsent?' checked':'')+'> Count every Late (L) hour as absent</label><div class="hint" style="margin-top:-8px">Off by default: Late and Excused both count as present.</div>'+
+      '<label class="sw"><input type="checkbox" id="seLate3" data-ch="seLateMode"'+(s.lateThree&&!s.lateAbsent?' checked':'')+'> Every 3 Late (L) hours count as 1 absent hour</label><div class="hint" style="margin-top:-8px">Counted over the whole course. For example, 7 lates = 2 absent hours. Only one of these two late options can be on at a time.</div>'+
+      '<label class="sw"><input type="checkbox" id="seCamp"'+(s.camp?' checked':'')+'> Camp season</label><div class="hint" style="margin-top:-8px">Adds the 7AM, 12NN and 5PM slots and a Saturday column to every schedule and attendance grid. While it is on, 12NN is a class slot instead of the lunch break. Turning it off only hides them. Nothing is deleted.</div>'+
+      '<div class="sh-f"><button class="btn green" data-act="seSave" style="flex:none">Save settings</button></div></div>'+
+      '<div class="ph" style="margin-top:18px"><h2>Change admin password</h2></div><div class="card"><label class="lbl" style="margin-top:0">Current password</label><input class="inp" type="password" id="pwOld" autocomplete="off"><label class="lbl">New password</label><input class="inp" type="password" id="pwNew" autocomplete="off"><div class="sh-f"><button class="btn green" data-act="pwSave" style="flex:none">Change password</button></div><div class="hint">The first password is "admin". Please change it.</div></div>'+
+      '<div class="ph" style="margin-top:18px"><h2>Certificate policy</h2></div><div class="card"><div class="tw"><table class="rt" style="min-width:0"><tr><th>Course</th><th>Hours per week</th><th>Absent hours allowed per week</th></tr><tr><td>Standard (4 man-to-man + 2 group)</td><td class="n">30</td><td class="n">6</td></tr><tr><td>Intensive (7 man-to-man)</td><td class="n">35</td><td class="n">7</td></tr></table></div><div class="hint">Allowed absences = weeks of stay × the weekly allowance. A student is not eligible once absent hours go over the allowance. At risk starts at 75% used. Holidays marked "No class" never count as absences.</div></div>');
+  }).catch(fail);
+};
+CH.seLateMode=function(el){
+  var a=$('#seLate'),b=$('#seLate3');
+  if(el.checked){(el===a?b:a).checked=false;}
+};
+H.seSave=function(){api('saveSettings',{org:$('#seOrg').value,lateAbsent:$('#seLate').checked,lateThree:$('#seLate3').checked,camp:$('#seCamp').checked}).then(function(s){S.boot.camp=s.camp;S.boot.org=s.org;S.boot.lateAbsent=s.lateAbsent;S.boot.lateThree=s.lateThree;S.list=null;toast('Settings saved','ok');var b=$('.brand small');if(b)b.textContent=s.org;}).catch(fail);};
+H.pwSave=function(){api('saveSettings',{currentPassword:$('#pwOld').value,newPassword:$('#pwNew').value}).then(function(){$('#pwOld').value='';$('#pwNew').value='';toast('Password changed','ok');}).catch(fail);};
+
+start();
+})();
+</script>
+</body>
+</html>
