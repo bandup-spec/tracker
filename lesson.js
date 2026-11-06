@@ -5,7 +5,8 @@
 var S=C.S,T=C.T,H=C.H,CH=C.CH,$=C.$,esc=C.esc,api=C.api,fail=C.fail,toast=C.toast,HL=C.HL,DOW=C.DOW,
     openSheet=C.openSheet,closeSheet=C.closeSheet,shHead=C.shHead,isRO=C.isRO,weekBar=C.weekBar,loadWeek=C.loadWeek,
     weekDates=C.weekDates,rowInfo=C.rowInfo,namesText=C.namesText,monday=C.monday,today=C.today,isOff=C.isOff,holOf=C.holOf,dow=C.dow,longD=C.longD;
-var L={carry:{},init:null,teachers:[],sh:null,prev:null,key:'',seq:0,data:null,q:Promise.resolve(),bsh:null};
+var mq=window.matchMedia('(max-width:760px)');   /* phone: one day at a time instead of the 7-column grid */
+var L={day:'',mob:false,carry:{},init:null,teachers:[],sh:null,prev:null,key:'',seq:0,data:null,q:Promise.resolve(),bsh:null};
 
 /* ---------- helpers ---------- */
 var OTHER='OTHER';
@@ -34,7 +35,7 @@ function open(){
     if(!L.teachers.some(function(x){return x.id===T.tid;}))
       T.tid=S.user.role==='teacher'?S.user.id:(L.teachers.filter(function(x){return x.active;})[0]||L.teachers[0]).id;
     L.prev=C.render;C.render=draw;L.key='';L.data=null;
-    L.sh=openSheet('<div class="loading">Loading…</div>',{full:true});
+    L.sh=openSheet(C.skel('cards'),{full:true});
     var mo=new MutationObserver(function(){   /* sheet closed (X, outside tap, Esc): hand the screen back to the page underneath */
       if(document.body.contains(L.sh))return;
       mo.disconnect();C.render=L.prev;if(C.render)C.render();
@@ -61,34 +62,62 @@ function paint(){
     (adm?'<button class="btn ghost sm" data-act="lsBooks">Manage books</button>':'')+'<button class="btn ghost sm" data-act="lsRefresh">Refresh</button></div>'+
     weekBar()+
     (L.init.books.some(function(b){return b.active;})?'':'<div class="banner"><span>'+(adm?'No books yet. Tap Manage books to add your first one.':'No books yet. Ask the admin to add the books.')+'</span></div>')+
-    (L.data?grid(ro):'<div class="loading">Loading lessons…</div>')+
+    (L.data?((L.mob=mq.matches)?dayView(ro):grid(ro)):C.skel('cards'))+
     '<div class="hint">Tap a name to change who is in that hour (same list as attendance). Pick the <b>Book</b> once: it carries forward (blue italics) to the next days and weeks until you choose another, and earlier days stay as they were. Then set the <b>Unit/Chapter</b> and tap <b>Notes</b>.</div>';
 }
+/* book + unit per cell for the whole week; a book carries forward until a later day sets a new one */
+function weekState(){
+  var ds=weekDates(),st={};
+  hours().forEach(function(h){
+    var cr=L.carry[h]||null;
+    ds.forEach(function(d){
+      var k=d+'|'+h;
+      if(isOff(d)||!(T.data.roster[k]||[]).length)return;
+      var x=L.data[k]||{},inh=false,hint='';
+      if(x.b)cr={b:x.b,u:x.u};else if(cr){inh=true;hint=cr.u||'';x=Object.assign({},x,{b:cr.b});}
+      st[k]={x:x,inh:inh,hint:hint};
+    });
+  });
+  return st;
+}
+function dayView(ro){
+  var ds=weekDates(),t=today(),ws=weekState();
+  if(ds.indexOf(L.day)<0)L.day=ds.indexOf(t)>=0?t:ds[0];
+  var o='<div class="ld-tabs">'+ds.map(function(d){return '<button class="'+(d===L.day?'on':'')+(isOff(d)?' off':'')+'" data-act="lsDay" data-d="'+d+'">'+DOW[dow(d)]+'<small>'+d.slice(8)+'</small></button>';}).join('')+'</div>';
+  if(isOff(L.day))return o+'<div class="empty"><b>No class</b>'+esc((holOf(L.day)||{}).label||'')+'</div>';
+  hours().forEach(function(h){
+    var ri=rowInfo(h),txt=namesText(ri.ids),k=L.day+'|'+h,s=ws[k];
+    o+='<div class="lcard"><div class="lc-h"><b>'+HL[h]+'</b><span class="lc-n'+(txt?'':' none')+'" data-act="pick" data-h="'+h+'">'+(txt?esc(txt)+(ri.varies?' (varies)':''):(ro?'No students':'+ Add student'))+'</span></div>'+
+      (s?cellBody(L.day,h,s.x,ro,s.inh,s.hint):'<div class="lc-e" data-act="cell" data-d="'+L.day+'" data-h="'+h+'">'+(ro?'Nothing scheduled':'Tap to add students for this day')+'</div>')+'</div>';
+  });
+  return o;
+}
+H.lsDay=function(el){L.day=el.dataset.d;paint();};
+window.addEventListener('resize',function(){if(L.sh&&document.body.contains(L.sh)&&mq.matches!==L.mob)paint();});
 function grid(ro){
-  var ds=weekDates(),t=today();
+  var ds=weekDates(),t=today(),ws=weekState();
   var o='<div class="tw lt"><table class="tg t-grid"><colgroup><col style="width:46px"><col style="width:120px">'+ds.map(function(){return '<col>';}).join('')+'</colgroup><thead><tr><th class="c-time">TIME</th><th class="c-nm" style="text-align:center">STUDENT</th>'+
     ds.map(function(d){var hl=holOf(d);return '<th class="'+(d===t?'today ':'')+(isOff(d)?'off':'')+'">'+DOW[dow(d)]+'<small>'+d.slice(8)+(hl&&!isOff(d)?' ★':'')+'</small></th>';}).join('')+'</tr></thead><tbody>';
   hours().forEach(function(h){
-    var ri=rowInfo(h),txt=namesText(ri.ids),cr=L.carry[h]||null;
+    var ri=rowInfo(h),txt=namesText(ri.ids);
     o+='<tr><td class="c-time" style="font-weight:800;font-size:12px">'+HL[h]+'</td><td class="nm'+(txt?'':' none')+'" data-act="pick" data-h="'+h+'">'+(txt?esc(txt)+(ri.varies?'<span class="v">varies</span>':''):(ro?'':'+ Add student'))+'</td>'+
       ds.map(function(d){
         if(isOff(d))return '<td class="off"></td>';
-        var k=d+'|'+h;
-        if(!(T.data.roster[k]||[]).length)return '<td class="lempty" data-act="cell" data-d="'+d+'" data-h="'+h+'">·</td>';
-        var x=L.data[k]||{},inh=false,hint='';   /* a book carries forward until a later day sets a new one */
-        if(x.b)cr={b:x.b,u:x.u};else if(cr){inh=true;hint=cr.u||'';x=Object.assign({},x,{b:cr.b});}
-        return cell(d,h,x,ro,inh,hint);
+        var k=d+'|'+h,s=ws[k];
+        if(!s)return '<td class="lempty" data-act="cell" data-d="'+d+'" data-h="'+h+'">·</td>';
+        return cell(d,h,s.x,ro,s.inh,s.hint);
       }).join('')+'</tr>';
   });
   return o+'</tbody></table></div>';
 }
-function cell(d,h,x,ro,inh,hint){
+function cell(d,h,x,ro,inh,hint){return '<td class="lcell">'+cellBody(d,h,x,ro,inh,hint)+'</td>';}
+function cellBody(d,h,x,ro,inh,hint){
   var at=' data-d="'+d+'" data-h="'+h+'"',dis=ro?' disabled':'';
-  return '<td class="lcell">'+
+  return ''+
     '<select class="ls'+(inh?' inh':'')+'" data-ch="lsBook"'+at+dis+' aria-label="Book">'+bookOpts(x.b)+'</select>'+
     (freeText(x.b)?'<input class="ls" data-ch="lsUnit"'+at+dis+' maxlength="100" value="'+esc(x.u||'')+'" placeholder="'+(x.b===OTHER?'Book &amp; unit (type)':'Unit/Chapter (type)')+(hint?' · last: '+esc(hint):'')+'" aria-label="Unit or chapter">'
       :'<select class="ls" data-ch="lsUnit"'+at+(ro||!x.b?' disabled':'')+' aria-label="Unit or chapter">'+unitOpts(x.b,x.u,hint)+'</select>')+
-    '<button class="ln'+(x.n?' on':'')+'" data-act="lsNote"'+at+(x.n?' title="'+esc(x.n.slice(0,200))+'"':'')+'>'+(x.n?'Notes ✓':(ro?'No notes':'+ Notes'))+'</button></td>';
+    '<button class="ln'+(x.n?' on':'')+'" data-act="lsNote"'+at+(x.n?' title="'+esc(x.n.slice(0,200))+'"':'')+'>'+(x.n?'Notes ✓':(ro?'No notes':'+ Notes'))+'</button>';
 }
 
 /* ---------- saving (optimistic, one at a time and in order) ---------- */
@@ -142,8 +171,9 @@ H.bkSave=function(el){
   api('saveBook',{id:el.dataset.id,title:$('#bkT').value,units:$('#bkU').value}).then(function(){closeSheet();toast('Saved','ok');return afterBook();}).catch(fail);
 };
 H.bkSeed=function(){
-  if(!confirm('Add the starter list (Evolve, Face2face, Prepare, Super Minds, TOEIC, IELTS, TOEFL, Working Holiday, Business English, Supplementary)? Books you already have are kept.'))return;
-  api('seedBooks').then(function(r){toast('Added '+r.added+', updated '+r.updated,'ok');return afterBook();}).catch(fail);
+  C.ask('Add the starter list (Evolve, Face2face, Prepare, Super Minds, TOEIC, IELTS, TOEFL, Working Holiday, Business English, Supplementary)? Books you already have are kept.',function(){
+    api('seedBooks').then(function(r){toast('Added '+r.added+', updated '+r.updated,'ok');return afterBook();}).catch(fail);
+  });
 };
 H.bkTog=function(el){
   var b=book(el.dataset.id);if(!b)return;
