@@ -8,7 +8,7 @@ var S=C.S,T=C.T,H=C.H,CH=C.CH,$=C.$,app=C.app,esc=C.esc,api=C.api,fail=C.fail,to
 function menuItems(){
   var m=[{label:'Lesson Trackers',doo:'lessonOpen'},{label:'My schedule',doo:'tvMine'},{label:"Other teachers' schedules",doo:'tvOthers'},{label:'This week',doo:'wkToday'}];
   if(!isRO())m.push({label:'Copy week',doo:'copyMenu'});
-  m.push({label:'Refresh',doo:'wkRefresh'});
+  m.push({label:'Refresh',doo:'wkRefresh'},{label:'Report a problem',doo:'reportProblem'});
   return m;
 }
 function renderTeacher(){
