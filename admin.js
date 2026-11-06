@@ -20,7 +20,7 @@ function goTab(t){
   for(var i=0;i<bs.length;i++)bs[i].classList.toggle('on',bs[i].dataset.t===t);
   var dl=document.querySelectorAll('#drawer .dr-i[data-t]');for(var j=0;j<dl.length;j++)dl[j].classList.toggle('on',dl[j].dataset.t===t);
   var cu=$('#cur');if(cu){var ft=TABS.filter(function(x){return x[0]===t;})[0];cu.textContent=ft?ft[1]:'';}
-  var c=$('#content');if(!c)return;c.innerHTML='<div class="loading">Loading…</div>';window.scrollTo(0,0);
+  var c=$('#content');if(!c)return;c.innerHTML=C.skel('list');window.scrollTo(0,0);
   VIEWS[t]();
 }
 H.tab=function(el){goTab(el.dataset.t);};
@@ -225,7 +225,7 @@ var P=null;
 H.prof=function(el){openProfile(el.dataset.id);};
 function openProfile(id,view,anchor){
   P={id:id,view:view||'month',anchor:anchor||null,rec:null,map:{}};
-  P.sh=openSheet('<div class="loading">Loading…</div>',{full:true});
+  P.sh=openSheet(C.skel('list'),{full:true});
   loadProfile(true);
 }
 function loadProfile(first){
@@ -460,13 +460,14 @@ H.tRename=function(el){
 };
 H.trSave=function(el){api('saveTeacher',{id:el.dataset.id,name:$('#trName').value}).then(function(){closeSheet();toast('Saved','ok');VIEWS.teachers();}).catch(fail);};
 H.tReset=function(el){
-  if(!confirm('Create a new PIN for '+el.dataset.name+'? Their old PIN will stop working.'))return;
-  api('resetPin',{id:el.dataset.id}).then(function(r){pinSheet('New PIN',esc(el.dataset.name),null,r.pin);VIEWS.teachers();}).catch(fail);
+  C.ask('Create a new PIN for '+el.dataset.name+'? Their old PIN will stop working.',function(){
+    api('resetPin',{id:el.dataset.id}).then(function(r){pinSheet('New PIN',esc(el.dataset.name),null,r.pin);VIEWS.teachers();}).catch(fail);
+  });
 };
 H.tToggle=function(el){
   var on=el.dataset.on==='1';
-  if(on&&!confirm('Deactivate '+el.dataset.name+'? They will no longer be able to sign in. Past records are kept.'))return;
-  api('saveTeacher',{id:el.dataset.id,name:el.dataset.name,active:!on}).then(function(){toast(on?'Teacher deactivated':'Teacher activated','ok');VIEWS.teachers();}).catch(fail);
+  function go(){api('saveTeacher',{id:el.dataset.id,name:el.dataset.name,active:!on}).then(function(){toast(on?'Teacher deactivated':'Teacher activated','ok');VIEWS.teachers();}).catch(fail);}
+  if(on)C.ask('Deactivate '+el.dataset.name+'? They will no longer be able to sign in. Past records are kept.',go);else go();
 };
 H.tBulk=function(){
   openSheet(shHead('Bulk import teachers','One name per line. PINs are created automatically.')+'<textarea class="inp" id="tbText" placeholder="Teacher Zeus&#10;Teacher Hera&#10;Teacher Apollo"></textarea><div class="sh-f"><button class="btn ghost" data-act="closeSheet">Cancel</button><button class="btn green" data-act="tbGo">Import teachers</button></div>');
@@ -497,7 +498,7 @@ H.hSave=function(){
   api('saveHoliday',{date:d,label:$('#hLabel').value,type:$('#hType').value}).then(function(l){C.setHol(l);toast('Saved','ok');VIEWS.cal();}).catch(fail);
 };
 H.hEdit=function(el){var h=S.hol[el.dataset.d];$('#hDate').value=h.date;$('#hLabel').value=h.label;$('#hType').value=h.type;window.scrollTo(0,0);};
-H.hDel=function(el){if(!confirm('Remove this day from the list?'))return;api('deleteHoliday',{date:el.dataset.d}).then(function(l){C.setHol(l);VIEWS.cal();}).catch(fail);};
+H.hDel=function(el){C.ask('Remove this day from the list?',function(){api('deleteHoliday',{date:el.dataset.d}).then(function(l){C.setHol(l);VIEWS.cal();}).catch(fail);});};
 
 /* ================= Reports ================= */
 var RP={mode:'all',sel:{},q:'',details:true,from:'',to:'',out:null};
@@ -538,10 +539,8 @@ H.rpSheet=function(){   /* summary as a CSV file (opens in Excel / Google Sheets
     var q=function(v){v=String(v==null?'':v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
     var rows=[['#','Student','Course','Start','End','Weeks','Required Hrs','Attended Hrs','Present','Excused','Late','Absent','Allowed Absences','Remaining','Status','Certificate','Remarks']];
     d.items.forEach(function(it,i){var s=it.student,t=it.stats;rows.push([i+1,s.name,COURSE[s.course],s.start,s.end,s.weeks,t.required,t.attended,t.present,t.excused,t.late,t.absent,t.allowed,t.remaining,t.status,t.cert||'PENDING',it.remark]);});
-    var csv='\ufeff'+rows.map(function(r){return r.map(q).join(',');}).join('\r\n');
-    var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-    a.download=d.org+' Attendance Report '+d.generatedAt.slice(0,10)+'.csv';document.body.appendChild(a);a.click();a.remove();
-    toast('Report downloaded','ok');
+    var csv=rows.map(function(r){return r.map(q).join(',');}).join('\r\n');
+    C.saveText(d.org+' Attendance Report '+d.generatedAt.slice(0,10)+'.csv',csv);
   }).catch(fail);
 };
 function reportHtml(d){
