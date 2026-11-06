@@ -5,12 +5,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1f5f7a">
+<link rel="icon" type="image/png" href="logo-192.png">
+<link rel="apple-touch-icon" href="logo-192.png">
 <title>CWA Attendance Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div id="splash" role="status" aria-live="polite"><div class="sp-card"><div class="sp-logo">CWA</div><div class="sp-name">Curious World Academy</div><div class="sp-sub">Attendance &amp; Lesson Tracker</div><div class="sp-bar"><i></i></div><div class="sp-note" id="spNote"></div></div></div>
+<div id="splash" role="status" aria-live="polite"><div class="sp-card"><img class="sp-logo" src="logo.png" alt="Curious World Academy"><div class="sp-sub">Attendance &amp; Lesson Tracker</div><div class="sp-bar"><i></i></div><div class="sp-note" id="spNote"></div></div></div>
 <div id="busy"></div>
 <div id="app"></div>
 <div id="toast"></div>
@@ -36,7 +38,7 @@ function hideSplash(){
 
 function showLogin(msg){
   S.token=null;S.user=null;C.closeAllSheets();
-  app.innerHTML='<div class="login-wrap"><div class="login-card"><div class="login-tag">CWA ATTENDANCE TRACKER</div><h1>LOGIN</h1>'+
+  app.innerHTML='<div class="login-wrap"><div class="login-card"><div class="login-tag">CWA ATTENDANCE TRACKER</div><img class="login-logo" src="logo-192.png" alt=""><h1>LOGIN</h1>'+
     '<div class="fld"><select id="lu" data-ch="lmode"><option>Loading…</option></select></div>'+
     '<div class="fld"><label id="ll">PIN</label><input id="lp" type="password" autocomplete="off" inputmode="numeric" maxlength="4"></div>'+
     '<div class="lerr" id="le">'+esc(msg||'')+'</div>'+
