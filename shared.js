@@ -60,10 +60,29 @@ function courseOpts(withDesc){var p=S.boot.policy;return Object.keys(p).map(func
 
 /* ================= server calls, errors, logging ================= */
 function log(){if(DEBUG)console.log.apply(console,['[cwa]'].concat([].slice.call(arguments)));}
-function busy(n){busyN+=n;$('#busy').classList.toggle('on',busyN>0);}
+var busyT=[];
+function busy(n){   /* top bar while any request runs; a message appears if it is slow */
+  var was=busyN>0,b=$('#busy');busyN+=n;var on=busyN>0;b.classList.toggle('on',on);
+  if(on&&!was)busyT=[setTimeout(function(){b.setAttribute('data-msg','Still working…');},3000),setTimeout(function(){b.setAttribute('data-msg','Waking up the server. This can take a few seconds…');},9000)];
+  if(!on){busyT.forEach(clearTimeout);busyT=[];b.removeAttribute('data-msg');}
+}
+/* skeleton placeholders: grey shapes that match the screen that is about to appear */
+function skel(kind){
+  var s=function(st){return '<i class="sk" style="'+st+'"></i>';},o='<div class="skel" role="status" aria-label="Loading">',i;
+  var rows=function(n,cells){var r='';for(i=0;i<n;i++)r+='<div class="sk-row">'+cells+'</div>';return r;};
+  if(kind==='week')o+='<div class="sk-row">'+s('width:44px;height:44px')+s('flex:1;height:44px')+s('width:80px;height:44px')+'</div>'+s('width:100%;height:44px;margin-bottom:12px')+rows(8,s('width:46px')+s('width:110px')+s('flex:1')+s('flex:1')+s('flex:1')+s('flex:1')+s('flex:1'));
+  else if(kind==='admin')o+=s('width:60%;height:28px;margin-bottom:12px')+'<div class="sk-tiles">'+s('')+s('')+s('')+s('')+'</div>'+rows(5,s('flex:1;height:48px'));
+  else if(kind==='cards'){for(i=0;i<4;i++)o+='<div class="sk-card">'+s('width:40%;height:18px;margin-bottom:10px')+s('width:100%;height:40px;margin-bottom:8px')+s('width:100%;height:40px;margin-bottom:8px')+s('width:100%;height:40px')+'</div>';}
+  else o+=rows(6,s('flex:1;height:52px'));
+  return o+'</div>';
+}
 function mkErr(action,msg,code,trace){var e=new Error(msg);e.action=action;e.auth=code==='AUTH';e.trace=trace;return e;}
 /* transport: one POST to the Supabase Edge Function (text/plain avoids a CORS preflight) */
-function rpc(action,payload){return fetch(window.CWA_CONFIG.API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action:action,token:S.token,p:payload||{}})}).then(function(r){return r.json();});}
+function rpc(action,payload){
+  return fetch(window.CWA_CONFIG.API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action:action,token:S.token,p:payload||{}})}).then(function(r){
+    return r.json().catch(function(){throw new Error('Server problem (HTTP '+r.status+'). Please try again.');});
+  });
+}
 function api(action,payload){
   var t0=Date.now();busy(1);
   return rpc(action,payload).then(function(r){
@@ -111,6 +130,21 @@ function copyText(t){
   function fb(){var a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');toast('Copied','ok');}catch(e){toast('Copy failed','err');}a.remove();}
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){toast('Copied','ok');},fb);}else fb();
 }
+/* in-app confirm: window.confirm() is silently blocked in many app wrappers, so use a sheet instead */
+function ask(msg,yes){
+  C._ask=yes;
+  openSheet(shHead('Please confirm','')+'<p style="margin:4px 0 14px;line-height:1.4">'+esc(msg)+'</p><div class="sh-f"><button class="btn ghost" data-act="closeSheet">Cancel</button><button class="btn green" data-act="askYes">Yes</button></div>');
+}
+H.askYes=function(){var f=C._ask;C._ask=null;closeSheet();if(f)f();};
+/* exports: Copy always works; Download and Share depend on the app wrapper */
+function saveText(name,text){
+  C._txt={name:name,text:text};
+  openSheet(shHead('Save report',esc(name))+'<div class="hint" style="margin:0 0 8px">Tap <b>Copy</b> and paste into Excel or Google Sheets. <b>Download</b> and <b>Share</b> depend on your phone or app.</div><textarea class="inp" id="txtOut" rows="8" readonly></textarea><div class="sh-f"><button class="btn ghost" data-act="txtDl">Download</button>'+(navigator.share?'<button class="btn ghost" data-act="txtShare">Share</button>':'')+'<button class="btn green" data-act="txtCopy">Copy</button></div>');
+  $('#txtOut').value=text;
+}
+H.txtCopy=function(){copyText(C._txt.text);};
+H.txtDl=function(){var t=C._txt,a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+t.text],{type:'text/csv'}));a.download=t.name;document.body.appendChild(a);a.click();a.remove();};
+H.txtShare=function(){var t=C._txt;navigator.share({title:t.name,text:t.text}).catch(function(){});};
 function printHtml(html){$('#printArea').innerHTML=html;setTimeout(function(){window.print();},200);}
 
 document.addEventListener('click',function(e){var t=e.target.closest('[data-act]');if(!t)return;var f=H[t.dataset.act];if(!f){console.error('[cwa] no handler H.'+t.dataset.act);return;}e.preventDefault();f(t,e);});
@@ -174,10 +208,11 @@ function isRO(){return S.user.role==='teacher'&&T.tid!==S.user.id;}
 function loadWeek(ws){
   T.ws=ws;var seq=++T.seq,vk=T.tid+'|'+ws;
   if(T.viewKey!==vk){T.undo=[];T.viewKey=vk;}   /* Undo only covers the week on screen */
+  app.classList.add('wk-busy');   /* dim the current grid while the next week loads */
   return api('getTeacherWeek',{teacherId:T.tid,weekStart:ws}).then(function(d){
     if(seq!==T.seq)return;   /* a newer request replaced this one */
-    T.data=d;S.boot.camp=d.camp;T.stu={};d.students.forEach(function(s){T.stu[s.id]=s;});setHol(d.holidays);redraw();
-  }).catch(fail);
+    app.classList.remove('wk-busy');T.data=d;S.boot.camp=d.camp;T.stu={};d.students.forEach(function(s){T.stu[s.id]=s;});setHol(d.holidays);redraw();
+  }).catch(function(e){if(seq===T.seq)app.classList.remove('wk-busy');fail(e);});
 }
 function weekDates(){return (campOn()?[0,1,2,3,4,5]:[0,1,2,3,4]).map(function(i){return add(T.ws,i);});}
 function nameOf(id){var s=T.stu[id];return s?s.name:'(removed)';}
@@ -419,6 +454,6 @@ Object.assign(C,{$:$,app:app,esc:esc,api:api,fail:fail,toast:toast,log:log,openS
   copyText:copyText,printHtml:printHtml,markSheet:markSheet,drawerHtml:drawerHtml,courseOpts:courseOpts,setBoot:setBoot,setDebug:setDebug,setHol:setHol,selfTest:selfTest,
   add:add,addMonth:addMonth,allDays:allDays,allHrs:allHrs,calcEnd:calcEnd,clamp:clamp,dow:dow,holOf:holOf,hrs:hrs,iso:iso,isOff:isOff,lastClassDay:lastClassDay,lateAbs:lateAbs,longD:longD,lunchShown:lunchShown,
   mdy:mdy,monday:monday,monthEnd:monthEnd,monthName:monthName,monthStart:monthStart,nextMonday:nextMonday,nextWd:nextWd,pd:pd,today:today,upD:upD,weekEnd:weekEnd,weekdays:weekdays,
-  isRO:isRO,weekDates:weekDates,rowInfo:rowInfo,namesText:namesText,loadWeek:loadWeek,weekBar:weekBar,weekEmpty:weekEmpty,actionBar:actionBar,gridHtml:gridHtml});
+  isRO:isRO,skel:skel,ask:ask,saveText:saveText,weekDates:weekDates,rowInfo:rowInfo,namesText:namesText,loadWeek:loadWeek,weekBar:weekBar,weekEmpty:weekEmpty,actionBar:actionBar,gridHtml:gridHtml});
 window.CWA=C;
 })();
