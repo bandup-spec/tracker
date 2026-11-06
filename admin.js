@@ -7,7 +7,7 @@ var {S,T,H,IN,CH,$,app,esc,api,fail,toast,openSheet,closeSheet,shHead,pill,legen
   loadWeek,weekBar,weekEmpty,actionBar,gridHtml}=C;
 
 /* ================= shell ================= */
-var TABS=[['home','Home'],['att','Attendance'],['sched','Schedules'],['lessons','Lesson Trackers'],['students','Students'],['teachers','Teachers'],['reports','Reports'],['cal','Holidays'],['settings','Settings']];
+var TABS=[['home','Home'],['att','Attendance'],['sched','Schedules'],['lessons','Lesson Trackers'],['students','Students'],['teachers','Teachers'],['reports','Reports'],['cal','Holidays'],['settings','Settings'],['diag','Diagnostics']];
 var VIEWS={};
 function renderAdmin(){
   app.innerHTML='<div class="top"><div class="top-r"><div class="top-l"><button class="iconbtn burger" data-act="menu" aria-label="Open menu">☰</button><div class="brand">CWA Attendance Tracker<small>'+esc(S.boot.org)+'</small></div></div><span class="cur" id="cur"></span><button class="iconbtn so" data-act="logout">Sign out</button></div><div class="nav" id="nav">'+
@@ -416,6 +416,38 @@ H.aUndo=function(){
 };
 
 /* ================= Schedules (check and edit any teacher's week; the grid lives in shared.html) ================= */
+/* ---------- diagnostics: health check + error log ---------- */
+var DG={rows:[]};
+VIEWS.diag=function(){
+  content('<div class="ph"><h2>Diagnostics</h2></div>'+
+    '<div class="card" style="padding:14px;margin-bottom:12px"><b>Health check</b><p class="hint" style="margin:4px 0 10px">Scans the data for broken links, duplicates and setup problems.</p><button class="btn green" data-act="dgScan">Run scan</button><div id="dgScan" style="margin-top:10px"></div></div>'+
+    '<div class="card" style="padding:14px"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><b style="flex:1">Error log</b><button class="btn ghost sm" data-act="dgCopy">Copy / Save</button><button class="btn ghost sm" data-act="dgClear">Clear</button></div><div id="dgLog">'+C.skel('list')+'</div></div>');
+  H.dgLoad();
+};
+function dgTime(t){try{return new Date(t).toLocaleString('en-PH',{timeZone:'Asia/Manila',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});}catch(e){return String(t);}}
+H.dgLoad=function(){
+  api('listErrors',{limit:100}).then(function(rows){
+    DG.rows=rows;var el=$('#dgLog');if(!el)return;
+    el.innerHTML=rows.length?rows.map(function(r){
+      return '<details style="border-top:1px solid var(--line);padding:8px 0"><summary style="cursor:pointer"><b>'+esc(r.kind)+'</b> · '+esc(dgTime(r.created_at))+'<br><span>'+esc(r.message)+'</span><br><small style="color:var(--mut)">'+esc([r.screen,r.user_role&&(r.user_role+(r.user_id?' '+r.user_id:'')),r.action,r.app_ver].filter(Boolean).join(' · '))+'</small></summary>'+
+        '<pre style="white-space:pre-wrap;font-size:11px;margin:6px 0 0">'+esc([r.stack,r.device,r.extra].filter(Boolean).join('\n'))+'</pre></details>';
+    }).join(''):'<div class="empty"><b>No errors logged</b>Crashes and failed requests will appear here.</div>';
+  }).catch(fail);
+};
+H.dgScan=function(){
+  var el=$('#dgScan');el.innerHTML=C.skel('list');
+  api('healthCheck').then(function(list){
+    var ic={ok:'✓',warn:'!',error:'✕'},col={ok:'#2e7d32',warn:'#b26a00',error:'#c62828'};
+    el.innerHTML=list.map(function(x){return '<div style="display:flex;gap:8px;padding:6px 0;border-top:1px solid var(--line)"><b style="color:'+col[x.level]+';width:16px">'+ic[x.level]+'</b><div><div>'+esc(x.title)+'</div>'+(x.detail?'<small style="color:var(--mut)">'+esc(x.detail)+'</small>':'')+'</div></div>';}).join('');
+  }).catch(function(e){el.innerHTML='';fail(e);});
+};
+H.dgCopy=function(){
+  if(!DG.rows.length){toast('Nothing to copy yet.');return;}
+  C.saveText('CWA error log '+new Date().toISOString().slice(0,10)+'.txt',DG.rows.map(function(r){
+    return '['+dgTime(r.created_at)+'] '+r.kind+' | '+[r.screen,r.user_role,r.user_id,r.action,r.app_ver].filter(Boolean).join(' | ')+'\n'+r.message+(r.stack?'\n'+r.stack:'')+(r.device?'\nDevice: '+r.device:'')+(r.extra?'\n'+r.extra:'');
+  }).join('\n\n----\n\n'));
+};
+H.dgClear=function(){C.ask('Delete all logged errors?',function(){api('clearErrors').then(function(){toast('Error log cleared','ok');H.dgLoad();}).catch(fail);});};
 VIEWS.lessons=function(){
   content('<div class="ph"><h2>Lesson Trackers</h2></div><div class="card" style="padding:16px"><p style="margin:0 0 12px">Open any teacher\'s weekly lesson tracker: the book, unit and what was covered in each lesson.</p><div class="acts-bar"><button class="btn green" data-act="lessonOpen">Open Lesson Tracker</button><button class="btn ghost" data-act="lsBooks">Manage books</button></div></div>');
 };
