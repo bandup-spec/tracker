@@ -259,7 +259,7 @@ function tiles(t){
 }
 function drawProfile(){
   var r=P.rec,rg=profRange(),dates=weekdays(rg[0],rg[1]);
-  P.sh.innerHTML=shHead('Student record','Tap any box to correct attendance','<div class="acts" style="margin-left:auto"><button class="btn ghost sm" data-act="pPrint">Print / PDF</button><button class="btn ghost sm" data-act="pEdit">Edit student</button></div>')+
+  P.sh.innerHTML=shHead('Student record','Tap a box to change it: P → A → L → E → blank','<div class="acts" style="margin-left:auto"><button class="btn ghost sm" data-act="pPrint">Print / PDF</button><button class="btn ghost sm" data-act="pEdit">Edit student</button></div>')+
     idCard(r)+'<div class="remark">'+esc(r.remark)+'</div>'+tiles(r.stats)+
     '<div class="seg" id="pseg">'+[['day','Day'],['week','Week'],['month','Month'],['course','Whole course']].map(function(v){return '<button data-act="pView" data-v="'+v[0]+'" class="'+(P.view===v[0]?'on':'')+'">'+v[1]+'</button>';}).join('')+'</div>'+
     '<button class="btn green sm" data-act="pAllP" style="margin-left:10px">Mark all as Present</button>'+
@@ -275,15 +275,13 @@ H.pNav=function(el){
   drawProfile();
 };
 H.pEdit=function(){openStudentForm(P.rec.student);};
-H.pCell=function(el){
-  var d=el.dataset.d,h=+el.dataset.h,s=P.rec.student;
-  markSheet({title:s.name,sub:longD(d)+' · '+HL[h]+'. Tap again to clear.',students:[{id:s.id,name:'Attendance'}],
-    get:function(){return P.map[d+'|'+h]||'';},
-    apply:function(l){
-      var st=l[0].st;if(st)P.map[d+'|'+h]=st;else delete P.map[d+'|'+h];
-      api('saveAttendance',{entries:[{date:d,hour:h,studentId:s.id,status:st}]}).catch(fail).then(function(){S.list=null;return loadProfile();});   /* reload also reverts the screen if the save failed */
-    }
-  });
+var pQ=Promise.resolve(),pPend=0;
+H.pCell=function(el){   /* tap to cycle blank > P > A > L > E > blank, same as the other attendance screens */
+  var d=el.dataset.d,h=+el.dataset.h,s=P.rec.student,k=d+'|'+h,cur=P.map[k]||'',st=CYCLE[(CYCLE.indexOf(cur)+1)%CYCLE.length];
+  if(st)P.map[k]=st;else delete P.map[k];
+  drawProfile();
+  pPend++;   /* saves go out in order; reload only when the last one is done (also reverts the screen if a save failed) */
+  pQ=pQ.then(function(){return api('saveAttendance',{entries:[{date:d,hour:h,studentId:s.id,status:st}]});}).catch(fail).then(function(){if(--pPend===0){S.list=null;return loadProfile();}});
 };
 H.pPrint=function(){
   var r=P.rec,rg=profRange(),dates=weekdays(rg[0],rg[1]);
