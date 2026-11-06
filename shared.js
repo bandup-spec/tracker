@@ -89,15 +89,49 @@ function api(action,payload){
     busy(-1);log(action,r&&r.ok?'ok':'FAIL',(Date.now()-t0)+'ms',payload);
     if(r&&r.ok)return r.data;
     throw mkErr(action,(r&&r.error)||'Something went wrong.',r&&r.code,r&&r.trace);
-  },function(e){busy(-1);throw mkErr(action,(e&&e.message)||'Network problem. Check your connection and try again.');});
+  },function(e){busy(-1);reportErr('network',e,{action:action});throw mkErr(action,(e&&e.message)||'Network problem. Check your connection and try again.');});
 }
 function fail(e){
   if(e&&e.auth){C.showLogin('Your session expired. Please sign in again.');return;}
   console.error('[cwa]',(e&&e.action)||'',(e&&e.message)||e,(e&&e.trace)||'');
   toast(((e&&e.message)||String(e))+(DEBUG&&e&&e.action?'  ['+e.action+']':''),'err');
 }
-window.addEventListener('error',function(e){console.error('[cwa] uncaught',e.message,e.filename+':'+e.lineno);});
-window.addEventListener('unhandledrejection',function(e){console.error('[cwa] unhandled rejection',e.reason);if(DEBUG)toast('Unhandled: '+((e.reason&&e.reason.message)||e.reason),'err');});
+/* ---- crash / error reporting: captured here, saved on the server, read in the admin's Diagnostics tab ---- */
+var VERSION='2026.11.06',errQ=[],errSeen={},errSent=0;
+function screenName(){return S.user?S.user.role+':'+(document.querySelector('.lt')?'lessons':(S.tab||'main')):'signed-out';}
+function reportErr(kind,err,extra,force){
+  try{
+    var msg=String((err&&err.message)||err||'Unknown error').slice(0,500),key=kind+'|'+msg,now=Date.now();
+    if(!force){if(errSeen[key]&&now-errSeen[key]<30000)return;errSeen[key]=now;if(errSent>=25)return;errSent++;}   /* same error within 30 s is sent once; max 25 per page load */
+    errQ.push({kind:kind,message:msg,stack:String((err&&err.stack)||'').slice(0,4000),action:(extra&&extra.action)||'',screen:screenName(),ver:VERSION,
+      device:navigator.userAgent.slice(0,200)+' | '+innerWidth+'x'+innerHeight+(navigator.onLine?'':' | offline'),extra:(extra&&extra.extra)||''});
+    flushErr();
+  }catch(e){}
+}
+function flushErr(){   /* plain fetch, not api(): reporting must never show toasts or trigger more reports */
+  if(!errQ.length)return;
+  var batch=errQ.splice(0,10);
+  fetch(window.CWA_CONFIG.API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action:'logError',token:S.token,p:{entries:batch}})}).catch(function(){
+    try{localStorage.setItem('cwa_errq',JSON.stringify(JSON.parse(localStorage.getItem('cwa_errq')||'[]').concat(batch).slice(-30)));}catch(e){}   /* offline: keep for later */
+  });
+}
+function flushStored(){try{var q=JSON.parse(localStorage.getItem('cwa_errq')||'[]');if(q.length){localStorage.removeItem('cwa_errq');errQ=errQ.concat(q);flushErr();}}catch(e){}}
+window.addEventListener('error',function(e){
+  var t=e.target;
+  if(t&&t!==window&&(t.src||t.href)){reportErr('resource','Failed to load '+(t.src||t.href));return;}
+  console.error('[cwa] uncaught',e.message,e.filename+':'+e.lineno);
+  reportErr('js',e.error||e.message,{extra:String(e.filename||'').split('/').pop()+':'+e.lineno+':'+e.colno});
+},true);
+window.addEventListener('unhandledrejection',function(e){
+  console.error('[cwa] unhandled rejection',e.reason);if(DEBUG)toast('Unhandled: '+((e.reason&&e.reason.message)||e.reason),'err');
+  reportErr('promise',e.reason);
+});
+window.addEventListener('online',flushStored);setTimeout(flushStored,4000);
+H.reportProblem=function(){
+  openSheet(shHead('Report a problem','The screen and device details are added automatically')+'<textarea class="inp" id="prbNote" rows="5" maxlength="500" placeholder="What did you tap, and what happened instead?"></textarea><div class="sh-f"><button class="btn ghost" data-act="closeSheet">Cancel</button><button class="btn green" data-act="prbSend">Send</button></div>');
+  $('#prbNote').focus();
+};
+H.prbSend=function(){var v=$('#prbNote').value.trim();if(!v){toast('Please describe the problem first.');return;}closeSheet();reportErr('user',v,null,true);toast('Thanks, your report was sent.','ok');};
 
 /* ================= ui plumbing ================= */
 function toast(msg,kind){
@@ -454,6 +488,6 @@ Object.assign(C,{$:$,app:app,esc:esc,api:api,fail:fail,toast:toast,log:log,openS
   copyText:copyText,printHtml:printHtml,markSheet:markSheet,drawerHtml:drawerHtml,courseOpts:courseOpts,setBoot:setBoot,setDebug:setDebug,setHol:setHol,selfTest:selfTest,
   add:add,addMonth:addMonth,allDays:allDays,allHrs:allHrs,calcEnd:calcEnd,clamp:clamp,dow:dow,holOf:holOf,hrs:hrs,iso:iso,isOff:isOff,lastClassDay:lastClassDay,lateAbs:lateAbs,longD:longD,lunchShown:lunchShown,
   mdy:mdy,monday:monday,monthEnd:monthEnd,monthName:monthName,monthStart:monthStart,nextMonday:nextMonday,nextWd:nextWd,pd:pd,today:today,upD:upD,weekEnd:weekEnd,weekdays:weekdays,
-  isRO:isRO,skel:skel,ask:ask,saveText:saveText,weekDates:weekDates,rowInfo:rowInfo,namesText:namesText,loadWeek:loadWeek,weekBar:weekBar,weekEmpty:weekEmpty,actionBar:actionBar,gridHtml:gridHtml});
+  isRO:isRO,reportErr:reportErr,skel:skel,ask:ask,saveText:saveText,weekDates:weekDates,rowInfo:rowInfo,namesText:namesText,loadWeek:loadWeek,weekBar:weekBar,weekEmpty:weekEmpty,actionBar:actionBar,gridHtml:gridHtml});
 window.CWA=C;
 })();
