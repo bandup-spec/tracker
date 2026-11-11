@@ -5,6 +5,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1f5f7a">
+<script>/* apply the saved appearance before first paint (no white flash in dark mode) */
+(function(){try{var t=JSON.parse(localStorage.getItem('cwa_theme')||'{}'),r=document.documentElement,m=t.mode||'auto',d=m==='dark'||m==='oled'||(m==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.mode=m==='oled'?'oled':(d?'dark':'light');r.dataset.scheme=t.scheme||'teal';}catch(e){}})();</script>
 <link rel="icon" type="image/png" href="logo-192.png">
 <link rel="apple-touch-icon" href="logo-192.png">
 <title>CWA Attendance Tracker</title>
@@ -42,7 +44,7 @@ function showLogin(msg){
     '<div class="fld"><select id="lu" data-ch="lmode"><option>Loading…</option></select></div>'+
     '<div class="fld"><label id="ll">PIN</label><input id="lp" type="password" autocomplete="off" inputmode="numeric" maxlength="4"></div>'+
     '<div class="lerr" id="le">'+esc(msg||'')+'</div>'+
-    '<button class="btn green block" data-act="doLogin">SIGN IN</button></div></div>';
+    '<button class="btn green block" data-act="doLogin">SIGN IN</button><button class="linkbtn" data-act="appearance">Appearance</button></div></div>';
   api('loginOptions').then(function(list){
     var last='';try{last=localStorage.getItem('cwa_user')||'';}catch(e){}
     $('#lu').innerHTML=list.map(function(o){return '<option value="'+esc(o.id)+'"'+(o.id===last?' selected':'')+'>'+esc(o.name)+'</option>';}).join('');
