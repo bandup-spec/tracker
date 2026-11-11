@@ -47,12 +47,13 @@ function showLogin(msg){
     '<button class="btn green block" data-act="doLogin">SIGN IN</button><button class="linkbtn" data-act="appearance">Appearance</button></div></div>';
   api('loginOptions').then(function(list){
     var last='';try{last=localStorage.getItem('cwa_user')||'';}catch(e){}
-    $('#lu').innerHTML=list.map(function(o){return '<option value="'+esc(o.id)+'"'+(o.id===last?' selected':'')+'>'+esc(o.name)+'</option>';}).join('');
+    $('#lu').innerHTML=list.map(function(o){return '<option value="'+esc(o.id)+'" data-k="'+esc(o.kind||'')+'"'+(o.id===last?' selected':'')+'>'+esc(o.name)+'</option>';}).join('');
     loginMode();hideSplash();
   }).catch(function(e){hideSplash();fail(e);});
 }
+function isAdminSel(){var s=$('#lu'),o=s&&s.options[s.selectedIndex];return !!o&&o.getAttribute('data-k')==='admin';}   /* admins use a password, teachers a 4-digit PIN */
 function loginMode(){
-  var admin=$('#lu').value==='ADMIN',p=$('#lp');
+  var admin=isAdminSel(),p=$('#lp');
   $('#ll').textContent=admin?'PASSWORD':'PIN';
   if(admin){p.removeAttribute('maxlength');p.setAttribute('inputmode','text');}
   else{p.setAttribute('maxlength','4');p.setAttribute('inputmode','numeric');}
@@ -63,7 +64,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target.id=
 
 H.doLogin=function(){
   var u=$('#lu').value,p=$('#lp').value;
-  if(!p){$('#le').textContent='Enter your '+(u==='ADMIN'?'password':'4-digit PIN')+'.';return;}
+  if(!p){$('#le').textContent='Enter your '+(isAdminSel()?'password':'4-digit PIN')+'.';return;}
   api('login',{userId:u,pin:p}).then(function(r){
     S.token=r.token;try{localStorage.setItem('cwa_token',r.token);localStorage.setItem('cwa_user',u);}catch(e){}
     return api('bootstrap');
