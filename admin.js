@@ -207,7 +207,7 @@ H.bsParse=function(){
     r.err=err;rows.push(r);
   });
   BS.rows=rows;var ok=rows.filter(function(r){return !r.err;}).length;
-  $('#bsOut').innerHTML=rows.length?'<div class="tw" style="margin-top:10px;max-height:240px;overflow:auto"><table class="rt" style="min-width:0"><tr><th>Name</th><th>Course</th><th>Start</th><th>Wks</th><th></th></tr>'+rows.map(function(r){return '<tr><td>'+esc(r.name)+'</td><td>'+COURSE[r.course]+'</td><td>'+(r.start?mdy(r.start):'')+'</td><td class="n">'+(r.weeks||'')+'</td><td style="color:'+(r.err?'#b3262a':'#235a10')+';font-weight:700">'+(r.err||'OK')+'</td></tr>';}).join('')+'</table></div><div class="hint">'+ok+' of '+rows.length+' ready to import.</div>':'<div class="hint">Nothing to import yet.</div>';
+  $('#bsOut').innerHTML=rows.length?'<div class="tw" style="margin-top:10px;max-height:240px;overflow:auto"><table class="rt" style="min-width:0"><tr><th>Name</th><th>Course</th><th>Start</th><th>Wks</th><th></th></tr>'+rows.map(function(r){return '<tr><td>'+esc(r.name)+'</td><td>'+COURSE[r.course]+'</td><td>'+(r.start?mdy(r.start):'')+'</td><td class="n">'+(r.weeks||'')+'</td><td style="color:'+(r.err?'var(--danger)':'var(--p-fg)')+';font-weight:700">'+(r.err||'OK')+'</td></tr>';}).join('')+'</table></div><div class="hint">'+ok+' of '+rows.length+' ready to import.</div>':'<div class="hint">Nothing to import yet.</div>';
   $('#bsGo').disabled=!ok;$('#bsGo').textContent=ok?'Import '+ok+' student'+(ok>1?'s':''):'Import';
 };
 H.bsGo=function(){
