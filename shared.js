@@ -96,6 +96,30 @@ function fail(e){
   console.error('[cwa]',(e&&e.action)||'',(e&&e.message)||e,(e&&e.trace)||'');
   toast(((e&&e.message)||String(e))+(DEBUG&&e&&e.action?'  ['+e.action+']':''),'err');
 }
+/* ---- appearance: mode (auto / light / dark / OLED) and color scheme, saved on this device ---- */
+var MODES=[['auto','Auto','Follows your phone'],['light','Light','Bright and clean'],['dark','Dark','Easy on the eyes'],['oled','OLED','Pure black, saves battery']],
+    SCHEMES=[['teal','Teal','#1f5f7a'],['indigo','Indigo','#3f4aa8'],['forest','Forest','#2e7d4f'],['rose','Rose','#b83a63'],['amber','Amber','#a85a0c']],
+    THEME={mode:'auto',scheme:'teal'},thSh=null,sysDark=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
+try{var thS=JSON.parse(localStorage.getItem('cwa_theme')||'{}');
+  if(MODES.some(function(m){return m[0]===thS.mode;}))THEME.mode=thS.mode;
+  if(SCHEMES.some(function(s){return s[0]===thS.scheme;}))THEME.scheme=thS.scheme;}catch(e){}
+function themeApply(){
+  var r=document.documentElement,dark=THEME.mode==='dark'||THEME.mode==='oled'||(THEME.mode==='auto'&&!!sysDark&&sysDark.matches),m=document.querySelector('meta[name=theme-color]');
+  r.dataset.mode=THEME.mode==='oled'?'oled':(dark?'dark':'light');r.dataset.scheme=THEME.scheme;
+  if(m)m.content=dark?(THEME.mode==='oled'?'#000000':'#0f1a20'):SCHEMES.filter(function(s){return s[0]===THEME.scheme;})[0][2];
+}
+if(sysDark){var thCh=function(){if(THEME.mode==='auto')themeApply();};if(sysDark.addEventListener)sysDark.addEventListener('change',thCh);else if(sysDark.addListener)sysDark.addListener(thCh);}
+themeApply();
+function appearanceHtml(){
+  return shHead('Appearance','Saved on this device')+
+    '<div class="ap-label">Mode</div><div class="ap-grid">'+MODES.map(function(m){return '<button class="ap-mode'+(THEME.mode===m[0]?' on':'')+'" data-act="thMode" data-v="'+m[0]+'"><span class="ap-prev ap-'+m[0]+'"><i></i></span><b>'+m[1]+'</b><small>'+m[2]+'</small></button>';}).join('')+'</div>'+
+    '<div class="ap-label">Color</div><div class="ap-row">'+SCHEMES.map(function(s){return '<button class="ap-sw'+(THEME.scheme===s[0]?' on':'')+'" data-act="thScheme" data-v="'+s[0]+'" style="background:'+s[2]+'" aria-label="'+s[1]+'" title="'+s[1]+'">'+(THEME.scheme===s[0]?'✓':'')+'</button>';}).join('')+'</div>';
+}
+function themeSave(){themeApply();try{localStorage.setItem('cwa_theme',JSON.stringify(THEME));}catch(e){}if(thSh&&document.body.contains(thSh))thSh.innerHTML=appearanceHtml();}
+H.appearance=function(){thSh=openSheet(appearanceHtml());};
+H.thMode=function(el){THEME.mode=el.dataset.v;themeSave();};
+H.thScheme=function(el){THEME.scheme=el.dataset.v;themeSave();};
+
 /* ---- crash / error reporting: captured here, saved on the server, read in the admin's Diagnostics tab ---- */
 var VERSION='2026.11.06',errQ=[],errSeen={},errSent=0;
 function screenName(){return S.user?S.user.role+':'+(document.querySelector('.lt')?'lessons':(S.tab||'main')):'signed-out';}
@@ -192,6 +216,7 @@ function drawerHtml(items){
   var u=S.user,adm=u.role==='admin';
   return '<div class="drawer" id="drawer"><div class="dr-bg" data-act="drawClose"></div><nav class="dr-pan"><div class="dr-h"><b>CWA Attendance Tracker</b><small>'+esc(adm?S.boot.org:u.name)+'</small></div><div class="dr-list">'+
     items.map(function(m){return '<button class="dr-i'+(adm&&m.t===S.tab?' on':'')+'" data-act="drawDo" data-do="'+m.doo+'"'+(m.t?' data-t="'+m.t+'"':'')+'>'+esc(m.label)+'</button>';}).join('')+
+    '<button class="dr-i" data-act="drawDo" data-do="appearance">Appearance</button>'+
     '</div><div class="dr-f"><button class="dr-i" data-act="drawDo" data-do="logout">Sign out</button></div></nav></div>';
 }
 H.menu=function(){var d=$('#drawer');if(d)d.classList.add('open');};
