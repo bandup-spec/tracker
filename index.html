@@ -51,7 +51,7 @@ function showLogin(msg){
     loginMode();hideSplash();
   }).catch(function(e){hideSplash();fail(e);});
 }
-function isAdminSel(){var s=$('#lu'),o=s&&s.options[s.selectedIndex];return !!o&&o.getAttribute('data-k')==='admin';}   /* admins use a password, teachers a 4-digit PIN */
+function isAdminSel(){var s=$('#lu'),o=s&&s.options[s.selectedIndex];return !!o&&(o.getAttribute('data-k')==='admin'||o.value==='ADMIN');}   /* the owner account is always an admin, even if the server is an older version */   /* admins use a password, teachers a 4-digit PIN */
 function loginMode(){
   var admin=isAdminSel(),p=$('#lp');
   $('#ll').textContent=admin?'PASSWORD':'PIN';
