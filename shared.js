@@ -214,7 +214,7 @@ H.closeSheet=function(){closeSheet();};
 /* ================= burger menu (phones); each role passes its own item list ================= */
 function drawerHtml(items){
   var u=S.user,adm=u.role==='admin';
-  return '<div class="drawer" id="drawer"><div class="dr-bg" data-act="drawClose"></div><nav class="dr-pan"><div class="dr-h"><b>CWA Attendance Tracker</b><small>'+esc(adm?S.boot.org:u.name)+'</small></div><div class="dr-list">'+
+  return '<div class="drawer" id="drawer"><div class="dr-bg" data-act="drawClose"></div><nav class="dr-pan"><div class="dr-h"><b>CWA Attendance Tracker</b><small>'+esc(adm?S.boot.org+' · '+u.name:u.name)+'</small></div><div class="dr-list">'+
     items.map(function(m){return '<button class="dr-i'+(adm&&m.t===S.tab?' on':'')+'" data-act="drawDo" data-do="'+m.doo+'"'+(m.t?' data-t="'+m.t+'"':'')+'>'+esc(m.label)+'</button>';}).join('')+
     '<button class="dr-i" data-act="drawDo" data-do="appearance">Appearance</button>'+
     '</div><div class="dr-f"><button class="dr-i" data-act="drawDo" data-do="logout">Sign out</button></div></nav></div>';
