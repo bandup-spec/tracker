@@ -39,7 +39,7 @@ function hideSplash(){
 }
 
 function showLogin(msg){
-  S.token=null;S.user=null;C.closeAllSheets();
+  C.avReset();S.token=null;S.user=null;C.closeAllSheets();
   app.innerHTML='<div class="login-wrap"><div class="login-card"><div class="login-tag">CWA ATTENDANCE TRACKER</div><img class="login-logo" src="logo-192.png" alt=""><h1>LOGIN</h1>'+
     '<div class="fld"><select id="lu" data-ch="lmode"><option>Loading…</option></select></div>'+
     '<div class="fld"><label id="ll">PIN</label><input id="lp" type="password" autocomplete="off" inputmode="numeric" maxlength="4"></div>'+
