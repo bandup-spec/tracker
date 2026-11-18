@@ -83,7 +83,7 @@ H.missOpen=function(el){openProfile(el.dataset.id,'day',el.dataset.d);};
 var SF={q:'',f:'active'};
 function stCard(s){
   var t=s.stats,pct=t.allowed?Math.min(100,Math.round(t.absent/t.allowed*100)):0,st=s.active?t.status:'ARCH';
-  return '<div class="scard" data-act="prof" data-id="'+esc(s.id)+'"><div class="sc-top"><b>'+esc(s.name)+'</b><span class="chip c-'+st+'">'+(s.active?t.status:'ARCHIVED')+'</span></div>'+
+  return '<div class="scard" data-act="prof" data-id="'+esc(s.id)+'"><div class="sc-top"><b style="display:flex;align-items:center;gap:8px">'+C.avatar('student',s.id,s.name,34)+'<span>'+esc(s.name)+'</span></b><span class="chip c-'+st+'">'+(s.active?t.status:'ARCHIVED')+'</span></div>'+
     '<div class="sc-sub">'+COURSE[s.course]+(s.type==='CAMP'?' · <b class="camptag">Camp</b>':'')+' · '+s.weeks+' wk'+(s.weeks>1?'s':'')+' · '+mdy(s.start)+' to '+mdy(s.end)+'</div>'+
     '<div class="meter '+t.status+'"><i style="width:'+pct+'%"></i></div>'+
     '<div class="sc-nums"><span>'+t.absent+' of '+t.allowed+' absent hrs used</span><button class="mini" data-act="stEdit" data-id="'+esc(s.id)+'">Edit</button></div></div>';
@@ -122,6 +122,7 @@ function openStudentForm(s){
   var isNew=!s,max=S.boot.maxWeeks;s=s||{name:'',course:'STANDARD',type:'REGULAR',start:nextMonday(),weeks:4,notes:'',active:true};
   SFM={id:s.id||'',custom:!isNew&&!!s.end&&s.end!==calcEnd(s.start,s.weeks)};
   openSheet(shHead(isNew?'Add student':'Edit student','Fill in the details below')+
+    (isNew?'':'<div style="display:flex;align-items:center;gap:12px;margin:4px 0 8px">'+C.avatar('student',s.id,s.name,56)+'<button class="btn ghost sm" data-act="stPhoto" data-id="'+esc(s.id)+'" data-name="'+esc(s.name)+'">Change photo</button></div>')+
     '<label class="lbl">Full name</label><input class="inp" id="sfName" value="'+esc(s.name)+'" autocomplete="off">'+
     '<label class="lbl">Course</label><select class="inp" id="sfCourse" data-ch="sfc">'+courseOpts(true)+'</select>'+
     '<label class="lbl">Student type</label><select class="inp" id="sfType"><option value="REGULAR">Regular</option><option value="CAMP">Camp</option></select>'+
@@ -251,7 +252,7 @@ function profLabel(){
 }
 function idCard(r){
   var s=r.student,t=r.stats;
-  return '<div class="idcard"><div class="idn">'+esc(s.name)+(s.active?'':' (archived)')+'</div><div class="idg"><div><span>Course</span><b>'+COURSE[s.course]+'</b></div><div><span>Status</span><b class="tx-'+t.status+'">'+t.status+'</b></div><div><span>Cert. eligibility</span><b>'+(t.cert||'PENDING')+'</b></div><div><span>Start date</span><b>'+mdy(s.start)+'</b></div><div><span>End date</span><b>'+mdy(s.end)+'</b></div></div></div>';
+  return '<div class="idcard"><div class="idn" style="display:flex;align-items:center;gap:12px">'+C.avatar('student',s.id,s.name,52)+'<span>'+esc(s.name)+(s.active?'':' (archived)')+'</span></div><div class="idg"><div><span>Course</span><b>'+COURSE[s.course]+'</b></div><div><span>Status</span><b class="tx-'+t.status+'">'+t.status+'</b></div><div><span>Cert. eligibility</span><b>'+(t.cert||'PENDING')+'</b></div><div><span>Start date</span><b>'+mdy(s.start)+'</b></div><div><span>End date</span><b>'+mdy(s.end)+'</b></div></div></div>';
 }
 function tiles(t){
   var pct=t.allowed?Math.min(100,Math.round(t.absent/t.allowed*100)):0;
@@ -275,6 +276,7 @@ H.pNav=function(el){
   drawProfile();
 };
 H.pEdit=function(){openStudentForm(P.rec.student);};
+H.stPhoto=function(el){C.photoSheet('student',el.dataset.id,el.dataset.name,true);};
 var pQ=Promise.resolve(),pPend=0;
 H.pCell=function(el){   /* tap to cycle blank > P > A > L > E > blank, same as the other attendance screens */
   var d=el.dataset.d,h=+el.dataset.h,s=P.rec.student,k=d+'|'+h,cur=P.map[k]||'',st=CYCLE[(CYCLE.indexOf(cur)+1)%CYCLE.length];
@@ -431,9 +433,9 @@ H.adLoad=function(){
   api('listAdmins').then(function(list){
     AD.list=list;var el=$('#adList');if(!el)return;
     el.innerHTML=list.map(function(a){
-      return '<div class="card" style="padding:12px;margin-bottom:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div style="flex:1;min-width:150px"><b>'+esc(a.name)+'</b>'+(a.owner?' <small style="color:var(--mut)">(owner)</small>':'')+(a.active?'':' <small style="color:var(--danger)">(switched off)</small>')+
-        '<br><small style="color:var(--mut)">Last sign-in: '+(a.lastLogin?esc(dgTime(a.lastLogin)):'never')+'</small></div>'+
-        (S.user.owner&&!a.owner?'<button class="btn ghost sm" data-act="adEdit" data-id="'+esc(a.id)+'">Rename</button><button class="btn ghost sm" data-act="adPw" data-id="'+esc(a.id)+'">Reset password</button><button class="btn ghost sm" data-act="adToggle" data-id="'+esc(a.id)+'">'+(a.active?'Switch off':'Switch on')+'</button>':'')+'</div>';
+      return '<div class="card" style="padding:12px;margin-bottom:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:10px;flex:1;min-width:150px">'+C.avatar('admin',a.id,a.name,40)+'<div><b>'+esc(a.name)+'</b>'+(a.owner?' <small style="color:var(--mut)">(owner)</small>':'')+(a.active?'':' <small style="color:var(--danger)">(switched off)</small>')+
+        '<br><small style="color:var(--mut)">Last sign-in: '+(a.lastLogin?esc(dgTime(a.lastLogin)):'never')+'</small></div></div>'+
+        (a.id===S.user.id?'<button class="btn ghost sm" data-act="myPhoto">My photo</button>':'')+(S.user.owner&&!a.owner?'<button class="btn ghost sm" data-act="adEdit" data-id="'+esc(a.id)+'">Rename</button><button class="btn ghost sm" data-act="adPw" data-id="'+esc(a.id)+'">Reset password</button><button class="btn ghost sm" data-act="adToggle" data-id="'+esc(a.id)+'">'+(a.active?'Switch off':'Switch on')+'</button>':'')+'</div>';
     }).join('');
   }).catch(fail);
   api('listActivity',{limit:60}).then(function(rows){
@@ -517,11 +519,12 @@ function pinSheet(title,sub,name,pin){
 VIEWS.teachers=function(){
   api('listTeachers').then(function(list){
     var act=list.filter(function(t){return t.active;}),old=list.filter(function(t){return !t.active;});
-    function li(t){return '<div class="li"><div><b>'+esc(t.name)+'</b>'+(t.active?'':'<small>Inactive</small>')+'</div><div class="acts"><span class="pin" title="Login PIN">'+esc(t.pin)+'</span><button class="mini" data-act="tCopy" data-pin="'+esc(t.pin)+'">Copy</button><button class="mini" data-act="tRename" data-id="'+esc(t.id)+'" data-name="'+esc(t.name)+'">Rename</button><button class="mini" data-act="tReset" data-id="'+esc(t.id)+'" data-name="'+esc(t.name)+'">New PIN</button><button class="mini" data-act="tToggle" data-id="'+esc(t.id)+'" data-name="'+esc(t.name)+'" data-on="'+(t.active?1:0)+'">'+(t.active?'Deactivate':'Activate')+'</button></div></div>';}
+    function li(t){return '<div class="li"><div style="display:flex;align-items:center;gap:10px">'+C.avatar('teacher',t.id,t.name,36)+'<div><b>'+esc(t.name)+'</b>'+(t.active?'':'<small>Inactive</small>')+'</div></div><div class="acts"><span class="pin" title="Login PIN">'+esc(t.pin)+'</span><button class="mini" data-act="tCopy" data-pin="'+esc(t.pin)+'">Copy</button><button class="mini" data-act="tPhoto" data-id="'+esc(t.id)+'" data-name="'+esc(t.name)+'">Photo</button><button class="mini" data-act="tRename" data-id="'+esc(t.id)+'" data-name="'+esc(t.name)+'">Rename</button><button class="mini" data-act="tReset" data-id="'+esc(t.id)+'" data-name="'+esc(t.name)+'">New PIN</button><button class="mini" data-act="tToggle" data-id="'+esc(t.id)+'" data-name="'+esc(t.name)+'" data-on="'+(t.active?1:0)+'">'+(t.active?'Deactivate':'Activate')+'</button></div></div>';}
     content('<div class="ph"><h2>Teachers</h2><div class="acts"><button class="btn green sm" data-act="tNew">+ Add teacher</button><button class="btn ghost sm" data-act="tBulk">Bulk import</button></div></div>'+
       (list.length?'<div class="card list">'+act.map(li).join('')+old.map(li).join('')+'</div><div class="hint">Teachers sign in by picking their name and typing their 4-digit PIN.</div>':'<div class="card empty"><b>No teachers yet</b>Add a teacher and a 4-digit PIN is created automatically.</div>'));
   }).catch(fail);
 };
+H.tPhoto=function(el){C.photoSheet('teacher',el.dataset.id,el.dataset.name,true);};
 H.tCopy=function(el){copyText(el.dataset.pin);};
 H.tNew=function(){
   openSheet(shHead('Add teacher','A 4-digit PIN is created for you')+'<label class="lbl">Teacher name</label><input class="inp" id="tnName" autocomplete="off"><div class="sh-f"><button class="btn ghost" data-act="closeSheet">Cancel</button><button class="btn green" data-act="tnSave">Add teacher</button></div>');
