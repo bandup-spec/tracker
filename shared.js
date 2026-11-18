@@ -120,6 +120,61 @@ H.appearance=function(){thSh=openSheet(appearanceHtml());};
 H.thMode=function(el){THEME.mode=el.dataset.v;themeSave();};
 H.thScheme=function(el){THEME.scheme=el.dataset.v;themeSave();};
 
+/* ---- profile photos: initials circle until a photo loads; links are short-lived and only requested when shown ---- */
+var AVC={},AVP={},avT=null,PH={};
+function avatarHtml(kind,id,name,size,domId){
+  var w=String(name||'?').replace(/^(Teacher|Admin ·)\s+/i,'').trim().split(/\s+/),ini=((w[0]||'?').charAt(0)+(w.length>1?w[w.length-1].charAt(0):'')).toUpperCase(),h=0,s=String(name||id),i;
+  for(i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))%360;
+  return '<span class="av"'+(domId?' id="'+domId+'"':'')+' data-av="'+kind+':'+esc(id)+'" data-ini="'+esc(ini)+'" style="--s:'+(size||36)+'px;--h:'+h+'">'+esc(ini)+'</span>';
+}
+function avPaint(el,u){el.setAttribute('data-av-done','1');if(u){el.style.backgroundImage='url("'+u+'")';el.textContent='';}else{el.style.backgroundImage='';el.textContent=el.getAttribute('data-ini')||'';}}
+function avHydrate(){
+  var els=document.querySelectorAll('[data-av]:not([data-av-done])'),need={},now=Date.now();
+  Array.prototype.forEach.call(els,function(el){var k=el.getAttribute('data-av'),c=AVC[k];if(c&&now-c.t<3000000)avPaint(el,c.u);else if(!AVP[k])need[k]=1;});
+  var keys=Object.keys(need);if(!keys.length||!S.token)return;
+  keys.forEach(function(k){AVP[k]=1;});
+  for(var i=0;i<keys.length;i+=150)(function(part){
+    rpc('getAvatars',{items:part.map(function(k){var j=k.indexOf(':');return {kind:k.slice(0,j),id:k.slice(j+1)};})}).then(function(r){
+      part.forEach(function(k){delete AVP[k];if(r.ok)AVC[k]={u:(r.data&&r.data[k])||'',t:Date.now()};});
+      if(r.ok)avHydrate();
+    }).catch(function(){part.forEach(function(k){delete AVP[k];});});
+  })(keys.slice(i,i+150));
+}
+new MutationObserver(function(){clearTimeout(avT);avT=setTimeout(avHydrate,40);}).observe(document.body,{childList:true,subtree:true});
+function avReset(){AVC={};AVP={};}
+function avRefresh(kind,id){var k=kind+':'+id;delete AVC[k];Array.prototype.forEach.call(document.querySelectorAll('[data-av="'+k+'"]'),function(el){el.removeAttribute('data-av-done');});avHydrate();}
+function readPhoto(file){   /* any picture the browser can open (JPG, JFIF, PNG, WebP, GIF, BMP...) becomes a centre-cropped 288px JPEG of about 25 KB */
+  return new Promise(function(res,rej){
+    if(file.size>25*1024*1024)return rej(new Error('That photo is too large. Please choose one under 25 MB.'));
+    var url=URL.createObjectURL(file),img=new Image();
+    img.onload=function(){
+      var s=Math.min(img.naturalWidth,img.naturalHeight),c=document.createElement('canvas'),x;c.width=c.height=288;x=c.getContext('2d');
+      x.fillStyle='#fff';x.fillRect(0,0,288,288);   /* transparent PNG/WebP areas become white, not black */
+      x.drawImage(img,(img.naturalWidth-s)/2,(img.naturalHeight-s)/2,s,s,0,0,288,288);URL.revokeObjectURL(url);
+      c.toBlob(function(b){if(!b)return rej(new Error('Could not read that photo.'));var r=new FileReader();r.onload=function(){res(String(r.result).split(',')[1]);};r.readAsDataURL(b);},'image/jpeg',.82);
+    };
+    img.onerror=function(){URL.revokeObjectURL(url);rej(new Error('This phone or browser cannot open that kind of photo (for example HEIC). Please choose a JPG, PNG or WebP, or take a new photo.'));};
+    img.src=url;
+  });
+}
+function photoSheet(kind,id,name,canEdit){
+  PH={kind:kind,id:id,b64:''};
+  openSheet(shHead('Profile photo',esc(name))+'<div style="text-align:center;margin:8px 0 14px">'+avatarHtml(kind,id,name,120,'phPrev')+'</div>'+
+    (canEdit?'<input type="file" id="phFile" accept="image/*,.jpg,.jpeg,.jfif,.pjpeg,.png,.webp,.gif,.bmp,.avif" hidden data-ch="phFile"><div class="ph-btns"><button class="btn green" data-act="phPick">Choose photo</button><button class="btn ghost" data-act="phDel">Remove photo</button></div>'+
+      (kind==='student'?'<div class="hint" style="margin-top:10px">Only add a photo with the student\'s (or a parent\'s) permission.</div>':'')+
+      '<div class="sh-f"><button class="btn ghost" data-act="closeSheet">Close</button><button class="btn green" data-act="phSave" id="phSave" disabled>Save photo</button></div>'
+      :'<div class="sh-f"><button class="btn ghost" data-act="closeSheet">Close</button></div>'));
+}
+H.phPick=function(){$('#phFile').click();};
+CH.phFile=function(el){
+  var f=el.files&&el.files[0];if(!f)return;
+  readPhoto(f).then(function(b64){PH.b64=b64;var p=$('#phPrev');p.setAttribute('data-av-done','1');p.style.backgroundImage='url(data:image/jpeg;base64,'+b64+')';p.textContent='';$('#phSave').disabled=false;}).catch(fail);
+  el.value='';
+};
+H.phSave=function(){if(!PH.b64)return;api('setAvatar',{kind:PH.kind,id:PH.id,image:PH.b64}).then(function(){avRefresh(PH.kind,PH.id);closeSheet();toast('Photo saved','ok');}).catch(fail);};
+H.phDel=function(){ask('Remove this photo?',function(){api('removeAvatar',{kind:PH.kind,id:PH.id}).then(function(){avRefresh(PH.kind,PH.id);closeSheet();toast('Photo removed','ok');}).catch(fail);});};
+H.myPhoto=function(){if(H.drawClose)H.drawClose();var u=S.user;photoSheet(u.role==='admin'?'admin':'teacher',u.id,u.name,true);};
+
 /* ---- crash / error reporting: captured here, saved on the server, read in the admin's Diagnostics tab ---- */
 var VERSION='2026.11.06',errQ=[],errSeen={},errSent=0;
 function screenName(){return S.user?S.user.role+':'+(document.querySelector('.lt')?'lessons':(S.tab||'main')):'signed-out';}
@@ -214,9 +269,9 @@ H.closeSheet=function(){closeSheet();};
 /* ================= burger menu (phones); each role passes its own item list ================= */
 function drawerHtml(items){
   var u=S.user,adm=u.role==='admin';
-  return '<div class="drawer" id="drawer"><div class="dr-bg" data-act="drawClose"></div><nav class="dr-pan"><div class="dr-h"><b>CWA Attendance Tracker</b><small>'+esc(adm?S.boot.org+' · '+u.name:u.name)+'</small></div><div class="dr-list">'+
+  return '<div class="drawer" id="drawer"><div class="dr-bg" data-act="drawClose"></div><nav class="dr-pan"><div class="dr-h dr-who"><button class="av-btn" data-act="myPhoto" aria-label="My photo">'+avatarHtml(adm?'admin':'teacher',u.id,u.name,46)+'</button><div><b>CWA Attendance Tracker</b><small>'+esc(adm?S.boot.org+' · '+u.name:u.name)+'</small></div></div><div class="dr-list">'+
     items.map(function(m){return '<button class="dr-i'+(adm&&m.t===S.tab?' on':'')+'" data-act="drawDo" data-do="'+m.doo+'"'+(m.t?' data-t="'+m.t+'"':'')+'>'+esc(m.label)+'</button>';}).join('')+
-    '<button class="dr-i" data-act="drawDo" data-do="appearance">Appearance</button>'+
+    '<button class="dr-i" data-act="drawDo" data-do="myPhoto">My profile photo</button><button class="dr-i" data-act="drawDo" data-do="appearance">Appearance</button>'+
     '</div><div class="dr-f"><button class="dr-i" data-act="drawDo" data-do="logout">Sign out</button></div></nav></div>';
 }
 H.menu=function(){var d=$('#drawer');if(d)d.classList.add('open');};
@@ -459,7 +514,7 @@ function pkList(){
   var addRow=PK.q.trim()?'<div class="prow" data-act="pkNew"><i>+</i><span><b>Add "'+esc(PK.q.trim())+'" as a new student</b></span></div>':'';
   if(!list.length)return addRow+'<div class="empty">'+(T.data.students.length?'No student matches "'+esc(PK.q)+'".':'No students yet.')+'<br>Type the full name above, then tap Add.</div>';
   return list.slice(0,80).map(function(s){var on=PK.sel.indexOf(s.id)>-1;
-    return '<div class="prow'+(on?' on':'')+'" data-act="pkTog" data-id="'+esc(s.id)+'"><i>'+(on?'✓':'')+'</i><span>'+esc(s.name)+'</span><small>'+COURSE[s.course]+(s.type==='CAMP'?' · Camp':'')+'</small></div>';}).join('')+(list.length>80?'<div class="hint" style="padding:8px 12px">Keep typing to narrow the list.</div>':'')+addRow;
+    return '<div class="prow'+(on?' on':'')+'" data-act="pkTog" data-id="'+esc(s.id)+'"><i>'+(on?'✓':'')+'</i>'+avatarHtml('student',s.id,s.name,30)+'<span>'+esc(s.name)+'</span><small>'+COURSE[s.course]+(s.type==='CAMP'?' · Camp':'')+'</small></div>';}).join('')+(list.length>80?'<div class="hint" style="padding:8px 12px">Keep typing to narrow the list.</div>':'')+addRow;
 }
 function drawPicker(){
   PK.sh.innerHTML=shHead('Students at '+HL[PK.h],'Pick one for man-to-man, or several for a group class')+
@@ -513,6 +568,6 @@ Object.assign(C,{$:$,app:app,esc:esc,api:api,fail:fail,toast:toast,log:log,openS
   copyText:copyText,printHtml:printHtml,markSheet:markSheet,drawerHtml:drawerHtml,courseOpts:courseOpts,setBoot:setBoot,setDebug:setDebug,setHol:setHol,selfTest:selfTest,
   add:add,addMonth:addMonth,allDays:allDays,allHrs:allHrs,calcEnd:calcEnd,clamp:clamp,dow:dow,holOf:holOf,hrs:hrs,iso:iso,isOff:isOff,lastClassDay:lastClassDay,lateAbs:lateAbs,longD:longD,lunchShown:lunchShown,
   mdy:mdy,monday:monday,monthEnd:monthEnd,monthName:monthName,monthStart:monthStart,nextMonday:nextMonday,nextWd:nextWd,pd:pd,today:today,upD:upD,weekEnd:weekEnd,weekdays:weekdays,
-  isRO:isRO,reportErr:reportErr,skel:skel,ask:ask,saveText:saveText,weekDates:weekDates,rowInfo:rowInfo,namesText:namesText,loadWeek:loadWeek,weekBar:weekBar,weekEmpty:weekEmpty,actionBar:actionBar,gridHtml:gridHtml});
+  isRO:isRO,avatar:avatarHtml,photoSheet:photoSheet,avReset:avReset,reportErr:reportErr,skel:skel,ask:ask,saveText:saveText,weekDates:weekDates,rowInfo:rowInfo,namesText:namesText,loadWeek:loadWeek,weekBar:weekBar,weekEmpty:weekEmpty,actionBar:actionBar,gridHtml:gridHtml});
 window.CWA=C;
 })();
