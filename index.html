@@ -9,7 +9,7 @@
 (function(){try{var t=JSON.parse(localStorage.getItem('cwa_theme')||'{}'),r=document.documentElement,m=t.mode||'auto',d=m==='dark'||m==='oled'||(m==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.mode=m==='oled'?'oled':(d?'dark':'light');r.dataset.scheme=t.scheme||'teal';}catch(e){}})();</script>
 <link rel="icon" type="image/png" href="logo-192.png">
 <link rel="apple-touch-icon" href="logo-192.png">
-<title>CWA Attendance Tracker</title>
+<title>CWA Web App</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -40,7 +40,7 @@ function hideSplash(){
 
 function showLogin(msg){
   C.avReset();S.token=null;S.user=null;C.closeAllSheets();
-  app.innerHTML='<div class="login-wrap"><div class="login-card"><div class="login-tag">CWA ATTENDANCE TRACKER</div><img class="login-logo" src="logo-192.png" alt=""><h1>LOGIN</h1>'+
+  app.innerHTML='<div class="login-wrap"><div class="login-card"><div class="login-tag">CWA APP</div><img class="login-logo" src="logo-192.png" alt=""><h1>LOGIN</h1>'+
     '<div class="fld"><select id="lu" data-ch="lmode"><option>Loading…</option></select></div>'+
     '<div class="fld"><label id="ll">PIN</label><input id="lp" type="password" autocomplete="off" inputmode="numeric" maxlength="4"></div>'+
     '<div class="lerr" id="le">'+esc(msg||'')+'</div>'+
