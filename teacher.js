@@ -13,7 +13,7 @@ function menuItems(){
 }
 function renderTeacher(){
   var nm=S.user.name,ro=isRO();
-  var o='<div class="t-wrap"><div class="t-top"><button class="iconbtn burger" data-act="menu" aria-label="Open menu">☰</button><div class="namebox">'+esc(/^teacher/i.test(nm)?nm:'Teacher '+nm)+'</div><button class="iconbtn so" data-act="logout" aria-label="Sign out">Sign out</button></div>'+
+  var o='<div class="t-wrap"><div class="t-top"><button class="iconbtn burger" data-act="menu" aria-label="Open menu">☰</button><div class="namebox"><button class="av-btn" data-act="myPhoto" aria-label="My photo">'+C.avatar('teacher',S.user.id,nm,30)+'</button> '+esc(/^teacher/i.test(nm)?nm:'Teacher '+nm)+'</div><button class="iconbtn so" data-act="logout" aria-label="Sign out">Sign out</button></div>'+
     '<div class="seg tv-seg"><button data-act="tvMine" class="'+(ro?'':'on')+'">My schedule</button><button data-act="tvOthers" class="'+(ro?'on':'')+'">Other teachers</button></div><button class="btn green sm block" data-act="lessonOpen" style="margin-bottom:10px">Lesson Trackers</button>';
   if(ro)o+='<select class="inp" data-ch="tvSel" style="margin-bottom:10px" aria-label="Choose a teacher">'+T.teachers.map(function(x){return '<option value="'+esc(x.id)+'"'+(x.id===T.tid?' selected':'')+'>'+esc(x.name)+'</option>';}).join('')+'</select><div class="ro-note">View only: you can look at this schedule but not change it.</div>';
   app.innerHTML=o+weekBar()+weekEmpty()+actionBar()+gridHtml()+'</div>'+drawerHtml(menuItems());
