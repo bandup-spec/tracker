@@ -7,7 +7,7 @@ var {S,T,H,IN,CH,$,app,esc,api,fail,toast,openSheet,closeSheet,shHead,pill,legen
   loadWeek,weekBar,weekEmpty,actionBar,gridHtml}=C;
 
 /* ================= shell ================= */
-var TABS=[['home','Home'],['att','Attendance'],['sched','Schedules'],['lessons','Lesson Trackers'],['students','Students'],['teachers','Teachers'],['reports','Reports'],['cal','Holidays'],['admins','Admins'],['settings','Settings'],['diag','Diagnostics']];
+var TABS=[['home','Home'],['att','Attendance'],['sched','Schedules'],['lessons','Lesson Trackers'],['students','Students'],['teachers','Teachers'],['reports','Reports'],['cal','Holidays'],['med','Medicine'],['admins','Admins'],['settings','Settings'],['diag','Diagnostics']].filter(function(t){return t[0]!=='med'||S.user.owner;});   /* Medicine records: owner admin only */
 var VIEWS={};
 function renderAdmin(){
   app.innerHTML='<div class="top"><div class="top-r"><div class="top-l"><button class="iconbtn burger" data-act="menu" aria-label="Open menu">☰</button><div class="brand">CWA Attendance Tracker<small>'+esc(S.boot.org)+'</small></div></div><span class="cur" id="cur"></span><button class="iconbtn so" data-act="logout">Sign out</button></div><div class="nav" id="nav">'+
@@ -418,12 +418,18 @@ H.aUndo=function(){
 };
 
 /* ================= Schedules (check and edit any teacher's week; the grid lives in shared.html) ================= */
+/* ---------- medicine (owner admin: view only; the nurse edits) ---------- */
+VIEWS.med=function(){
+  content('<div class="ph"><h2>Medicine</h2></div><p class="hint" style="margin:0 0 10px">View only. The nurse manages the stock. Reports can be printed or saved from Records.</p><div id="medRoot">'+C.skel('list')+'</div>');
+  C.loadJs('medicine.js').then(function(){C.med.mount($('#medRoot'),'viewer');}).catch(fail);
+};
+
 /* ---------- admins: accounts (owner manages) + who did what ---------- */
 var AD={list:[]};
 var ACT={saveStudent:'Saved a student',addStudentT:'Added a student',bulkAddStudents:'Imported students',markAllPresent:'Marked all present',saveTeacher:'Saved a teacher',resetPin:'Reset a teacher PIN',bulkAddTeachers:'Imported teachers',saveHoliday:'Saved a holiday',deleteHoliday:'Removed a holiday',saveSettings:'Changed settings',saveBook:'Saved a book',seedBooks:'Loaded starter books',saveAdmin:'Saved an admin',resetAdminPassword:'Reset an admin password',saveAttendance:'Edited attendance',setRoster:'Edited a schedule',copyWeek:'Copied a week',saveLesson:'Edited a lesson',clearErrors:'Cleared the error log'};
 VIEWS.admins=function(){
   var own=S.user.owner;
-  content('<div class="ph"><h2>Admins</h2>'+(own?'<button class="btn green sm" data-act="adNew">+ Add admin</button>':'')+'</div>'+
+  content('<div class="ph"><h2>Admins</h2>'+(own?'<span style="display:flex;gap:6px"><button class="btn green sm" data-act="adNew">+ Add admin</button><button class="btn ghost sm" data-act="adNewNurse">+ Add nurse</button></span>':'')+'</div>'+
     '<p class="hint" style="margin:0 0 10px">You are signed in as <b>'+esc(S.user.name)+'</b>'+(own?' (owner)':'')+'. '+(own?'Only the owner can add admins and reset their passwords.':'Only the owner can add or remove admins. Change your own password under Settings.')+'</p>'+
     '<div id="adList">'+C.skel('list')+'</div>'+
     '<div class="card" style="padding:14px;margin-top:12px"><b>Recent activity</b><div id="adLog" style="margin-top:8px">'+C.skel('list')+'</div></div>');
@@ -433,7 +439,7 @@ H.adLoad=function(){
   api('listAdmins').then(function(list){
     AD.list=list;var el=$('#adList');if(!el)return;
     el.innerHTML=list.map(function(a){
-      return '<div class="card" style="padding:12px;margin-bottom:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:10px;flex:1;min-width:150px">'+C.avatar('admin',a.id,a.name,40)+'<div><b>'+esc(a.name)+'</b>'+(a.owner?' <small style="color:var(--mut)">(owner)</small>':'')+(a.active?'':' <small style="color:var(--danger)">(switched off)</small>')+
+      return '<div class="card" style="padding:12px;margin-bottom:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:10px;flex:1;min-width:150px">'+C.avatar('admin',a.id,a.name,40)+'<div><b>'+esc(a.name)+'</b>'+(a.owner?' <small style="color:var(--mut)">(owner)</small>':a.role==='nurse'?' <small style="color:var(--mut)">(nurse)</small>':'')+(a.active?'':' <small style="color:var(--danger)">(switched off)</small>')+
         '<br><small style="color:var(--mut)">Last sign-in: '+(a.lastLogin?esc(dgTime(a.lastLogin)):'never')+'</small></div></div>'+
         (a.id===S.user.id?'<button class="btn ghost sm" data-act="myPhoto">My photo</button>':'')+(S.user.owner&&!a.owner?'<button class="btn ghost sm" data-act="adEdit" data-id="'+esc(a.id)+'">Rename</button><button class="btn ghost sm" data-act="adPw" data-id="'+esc(a.id)+'">Reset password</button><button class="btn ghost sm" data-act="adToggle" data-id="'+esc(a.id)+'">'+(a.active?'Switch off':'Switch on')+'</button>':'')+'</div>';
     }).join('');
@@ -448,10 +454,11 @@ H.adLoad=function(){
 function adForm(title,body,btn,id){
   openSheet(shHead(title,'')+body+'<div class="sh-f"><button class="btn ghost" data-act="closeSheet">Cancel</button><button class="btn green" data-act="'+btn+'" data-id="'+esc(id||'')+'">Save</button></div>');
 }
-H.adNew=function(){adForm('Add admin','<label class="lbl">Name</label><input class="inp" id="adN" autocomplete="off" placeholder="e.g. Maria Lopez"><label class="lbl">Password (at least 6 characters)</label><input class="inp" type="text" id="adP" autocomplete="off"><div class="hint">Tell them this password. They can change it under Settings after signing in.</div>','adSave','');};
+H.adNewNurse=function(){AD.role='nurse';adForm('Add nurse','<label class="lbl">Name</label><input class="inp" id="adN" autocomplete="off" placeholder="e.g. Maria Santos"><label class="lbl">Password (at least 6 characters)</label><input class="inp" type="text" id="adP" autocomplete="off"><div class="hint">The nurse signs in as "Nurse · Name" and can only use the medicine screens.</div>','adSave','');};
+H.adNew=function(){AD.role='admin';adForm('Add admin','<label class="lbl">Name</label><input class="inp" id="adN" autocomplete="off" placeholder="e.g. Maria Lopez"><label class="lbl">Password (at least 6 characters)</label><input class="inp" type="text" id="adP" autocomplete="off"><div class="hint">Tell them this password. They can change it under Settings after signing in.</div>','adSave','');};
 H.adEdit=function(el){var a=AD.list.filter(function(x){return x.id===el.dataset.id;})[0];if(!a)return;adForm('Rename admin','<label class="lbl">Name</label><input class="inp" id="adN" autocomplete="off" value="'+esc(a.name)+'">','adSave',a.id);};
 H.adSave=function(el){
-  var id=el.dataset.id,body={id:id,name:$('#adN').value};if(!id)body.password=$('#adP').value;
+  var id=el.dataset.id,body={id:id,name:$('#adN').value};if(!id){body.password=$('#adP').value;body.role=AD.role||'admin';}
   api('saveAdmin',body).then(function(){closeSheet();toast('Saved','ok');H.adLoad();}).catch(fail);
 };
 H.adPw=function(el){var a=AD.list.filter(function(x){return x.id===el.dataset.id;})[0];if(!a)return;adForm('Reset password','<div class="hint" style="margin:0 0 8px">New password for <b>'+esc(a.name)+'</b>. They will be signed out.</div><label class="lbl">New password (at least 6 characters)</label><input class="inp" type="text" id="adP" autocomplete="off">','adPwSave',a.id);};
