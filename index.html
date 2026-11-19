@@ -9,7 +9,7 @@
 (function(){try{var t=JSON.parse(localStorage.getItem('cwa_theme')||'{}'),r=document.documentElement,m=t.mode||'auto',d=m==='dark'||m==='oled'||(m==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.mode=m==='oled'?'oled':(d?'dark':'light');r.dataset.scheme=t.scheme||'teal';}catch(e){}})();</script>
 <link rel="icon" type="image/png" href="logo-192.png">
 <link rel="apple-touch-icon" href="logo-192.png">
-<title>CWA Web App</title>
+<title>CWA Attendance Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -40,7 +40,7 @@ function hideSplash(){
 
 function showLogin(msg){
   C.avReset();S.token=null;S.user=null;C.closeAllSheets();
-  app.innerHTML='<div class="login-wrap"><div class="login-card"><div class="login-tag">CURIOUS WORLD ACADEMY</div><img class="login-logo" src="logo-192.png" alt=""><h1>LOGIN</h1>'+
+  app.innerHTML='<div class="login-wrap"><div class="login-card"><div class="login-tag">CWA ATTENDANCE TRACKER</div><img class="login-logo" src="logo-192.png" alt=""><h1>LOGIN</h1>'+
     '<div class="fld"><select id="lu" data-ch="lmode"><option>Loading…</option></select></div>'+
     '<div class="fld"><label id="ll">PIN</label><input id="lp" type="password" autocomplete="off" inputmode="numeric" maxlength="4"></div>'+
     '<div class="lerr" id="le">'+esc(msg||'')+'</div>'+
@@ -51,7 +51,7 @@ function showLogin(msg){
     loginMode();hideSplash();
   }).catch(function(e){hideSplash();fail(e);});
 }
-function isAdminSel(){var s=$('#lu'),o=s&&s.options[s.selectedIndex];return !!o&&(o.getAttribute('data-k')==='admin'||o.value==='ADMIN');}   /* the owner account is always an admin, even if the server is an older version */   /* admins use a password, teachers a 4-digit PIN */
+function isAdminSel(){var s=$('#lu'),o=s&&s.options[s.selectedIndex],k=o&&o.getAttribute('data-k');return !!o&&(k==='admin'||k==='nurse'||o.value==='ADMIN');}   /* the owner account is always an admin, even if the server is an older version */   /* admins use a password, teachers a 4-digit PIN */
 function loginMode(){
   var admin=isAdminSel(),p=$('#lp');
   $('#ll').textContent=admin?'PASSWORD':'PIN';
@@ -78,7 +78,9 @@ H.logout=function(){api('logout').catch(function(){});forceLogout();};
 C.showLogin=forceLogout;
 
 /* Lesson Trackers: code is fetched the first time it is opened (both roles) */
-function loadJs(src){return new Promise(function(res,rej){var el=document.createElement('script');el.src=src;el.onload=res;el.onerror=function(){rej(new Error('Could not load '+src));};document.head.appendChild(el);});}
+var jsLoaded={};
+function loadJs(src){return jsLoaded[src]||(jsLoaded[src]=new Promise(function(res,rej){var el=document.createElement('script');el.src=src;el.onload=res;el.onerror=function(){delete jsLoaded[src];rej(new Error('Could not load '+src));};document.head.appendChild(el);}));}
+C.loadJs=loadJs;
 function lessonReady(){return C.lesson?Promise.resolve():loadJs('lesson.js');}
 H.lessonOpen=function(){lessonReady().then(function(){C.lesson.open();}).catch(fail);};
 H.lsBooks=function(){lessonReady().then(function(){C.lesson.books();}).catch(fail);};
@@ -86,11 +88,11 @@ H.lsBooks=function(){lessonReady().then(function(){C.lesson.books();}).catch(fai
 /* the role's script registers C.render and C.mount */
 function loadModule(role){
   if(loadedRole===role)return Promise.resolve();
-  return loadJs(role==='admin'?'admin.js':'teacher.js').then(function(){loadedRole=role;});
+  return loadJs(role==='admin'?'admin.js':role==='nurse'?'nurse.js':'teacher.js').then(function(){loadedRole=role;});
 }
 function enter(b){
   C.setBoot(b);
-  app.innerHTML=C.skel(b.user.role==='admin'?'admin':'week');   /* placeholder while the screen's code loads */
+  app.innerHTML=C.skel(b.user.role==='admin'?'admin':b.user.role==='nurse'?'list':'week');   /* placeholder while the screen's code loads */
   hideSplash();
   return loadModule(b.user.role).then(function(){
     if(typeof C.mount!=='function')throw new Error('The '+b.user.role+' module loaded but did not define mount().');
