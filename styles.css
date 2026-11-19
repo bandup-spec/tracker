@@ -331,3 +331,19 @@ td.miss{background:var(--bad-soft)}
 .dr-who{display:flex;align-items:center;gap:12px}
 .namebox .av{margin-right:6px}
 .ph-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+/* medicine */
+.selbtn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:46px;padding:8px 12px;border:1px solid var(--line2);border-radius:10px;background:var(--card);color:var(--ink);font-size:15px;text-align:left}
+.selbtn i{font-style:normal;color:var(--mut)}.sb-ph{color:var(--mut)}.sb-v{display:flex;align-items:center;gap:8px}
+.mp-row{display:flex;align-items:center;gap:10px;width:100%;padding:10px 6px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;color:var(--ink)}
+.mp-row small{display:block;color:var(--mut)}
+.stepper{display:flex;align-items:center;gap:14px}.stepper button{width:46px;height:46px;border-radius:12px;border:1px solid var(--line2);background:var(--card);font-size:24px;color:var(--ink)}.stepper b{min-width:40px;text-align:center;font-size:22px}
+.mg-avail{margin-top:8px;padding:8px 12px;border-radius:10px;background:var(--ok-soft);color:var(--p-fg)}.mg-avail.low{background:var(--warn-soft);color:var(--l-fg)}
+.rsn{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.med-tabs{display:flex;width:100%;margin-bottom:12px}.med-tabs button{flex:1;padding:8px 4px;font-size:13px}.med-kinds{display:flex;width:100%}.med-kinds button{flex:1}
+.med-badge{font-style:normal;background:var(--a-bg);color:var(--a-fg);border-radius:10px;padding:0 6px;font-size:11px;margin-left:4px}
+.med-card{padding:12px;margin-bottom:10px}.med-card.off{opacity:.6}.mc-top{display:flex;justify-content:space-between;gap:10px}.mc-top small{display:block;color:var(--mut)}
+.mc-n{font-size:30px;font-weight:800;line-height:1}.mc-n.low{color:var(--danger)}.mc-flags{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap}.mc-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.rec-dates{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.rec-dates label{font-size:12px;color:var(--mut)}.rec-filters{display:grid;gap:8px}
+.rc-day{font-weight:700;margin:14px 0 4px}.rc-row{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line)}.rc-t{width:56px;flex:none;color:var(--mut);font-size:13px}.rc-m small{color:var(--mut)}
+.kind-chip{display:inline-block;padding:1px 7px;border-radius:8px;background:var(--tint2);color:var(--mut);font-size:11px;font-weight:700}
