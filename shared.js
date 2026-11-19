@@ -173,7 +173,21 @@ CH.phFile=function(el){
 };
 H.phSave=function(){if(!PH.b64)return;api('setAvatar',{kind:PH.kind,id:PH.id,image:PH.b64}).then(function(){avRefresh(PH.kind,PH.id);closeSheet();toast('Photo saved','ok');}).catch(fail);};
 H.phDel=function(){ask('Remove this photo?',function(){api('removeAvatar',{kind:PH.kind,id:PH.id}).then(function(){avRefresh(PH.kind,PH.id);closeSheet();toast('Photo removed','ok');}).catch(fail);});};
-H.myPhoto=function(){if(H.drawClose)H.drawClose();var u=S.user;photoSheet(u.role==='admin'?'admin':'teacher',u.id,u.name,true);};
+H.myPhoto=function(){if(H.drawClose)H.drawClose();var u=S.user;photoSheet(u.role==='teacher'?'teacher':'admin',u.id,u.name,true);};
+
+/* ---- teachers: "Not feeling well?" shows the nurse and what is in stock (no counts, no records) ---- */
+H.unwell=function(){
+  if(H.drawClose)H.drawClose();
+  var head=shHead('Not feeling well?','Ask the nurse for medicine'),sh=openSheet(head+skel('list'),{full:true});
+  api('medAvailability').then(function(d){
+    var st={in:['P','In stock'],low:['L','Few left'],out:['A','Out of stock']};
+    sh.innerHTML=head+'<div class="card" style="padding:14px;margin-bottom:14px">'+
+      (d.nurses.length?d.nurses.map(function(n){return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">'+avatarHtml('admin',n.id,n.name,52)+'<div><b>Nurse '+esc(n.name)+'</b></div></div>';}).join(''):'<b>No nurse has been set up yet.</b>')+
+      (d.note?'<div style="margin-top:4px">'+esc(d.note)+'</div>':'')+'<div class="hint" style="margin-top:8px">Please go to the nurse and ask for the medicine you need.</div></div>'+
+      '<div class="ap-label">What is in stock</div>'+
+      (d.items.length?d.items.map(function(m){var s=st[m.status]||st.out;return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)"><span>'+esc(m.name)+(m.unit?' <small style="color:var(--mut)">('+esc(m.unit)+')</small>':'')+'</span><span class="tag '+s[0]+'">'+s[1]+'</span></div>';}).join(''):'<div class="empty"><b>No medicines listed yet</b></div>');
+  }).catch(function(e){closeSheet();fail(e);});
+};
 
 /* ---- crash / error reporting: captured here, saved on the server, read in the admin's Diagnostics tab ---- */
 var VERSION='2026.11.06',errQ=[],errSeen={},errSent=0;
@@ -269,7 +283,7 @@ H.closeSheet=function(){closeSheet();};
 /* ================= burger menu (phones); each role passes its own item list ================= */
 function drawerHtml(items){
   var u=S.user,adm=u.role==='admin';
-  return '<div class="drawer" id="drawer"><div class="dr-bg" data-act="drawClose"></div><nav class="dr-pan"><div class="dr-h dr-who"><button class="av-btn" data-act="myPhoto" aria-label="My photo">'+avatarHtml(adm?'admin':'teacher',u.id,u.name,46)+'</button><div><b>CWA APP</b><small>'+esc(adm?S.boot.org+' · '+u.name:u.name)+'</small></div></div><div class="dr-list">'+
+  return '<div class="drawer" id="drawer"><div class="dr-bg" data-act="drawClose"></div><nav class="dr-pan"><div class="dr-h dr-who"><button class="av-btn" data-act="myPhoto" aria-label="My photo">'+avatarHtml(u.role==='teacher'?'teacher':'admin',u.id,u.name,46)+'</button><div><b>CWA Attendance Tracker</b><small>'+esc(u.role==='teacher'?u.name:S.boot.org+' · '+u.name)+'</small></div></div><div class="dr-list">'+
     items.map(function(m){return '<button class="dr-i'+(adm&&m.t===S.tab?' on':'')+'" data-act="drawDo" data-do="'+m.doo+'"'+(m.t?' data-t="'+m.t+'"':'')+'>'+esc(m.label)+'</button>';}).join('')+
     '<button class="dr-i" data-act="drawDo" data-do="myPhoto">My profile photo</button><button class="dr-i" data-act="drawDo" data-do="appearance">Appearance</button>'+
     '</div><div class="dr-f"><button class="dr-i" data-act="drawDo" data-do="logout">Sign out</button></div></nav></div>';
