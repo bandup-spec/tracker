@@ -229,7 +229,7 @@ td.miss{background:var(--bad-soft)}
 #printArea{display:none}
 
 /* burger menu (phones) */
-.burger{display:none;align-items:center;justify-content:center;font-size:22px;line-height:1;padding:0}
+.burger{display:inline-flex;align-items:center;justify-content:center;font-size:22px;line-height:1;padding:0}   /* shown at every width: the menu holds personal items (photo, appearance, not feeling well) that have no other entry point */
 .drawer{position:fixed;inset:0;z-index:70;visibility:hidden}
 .drawer.open{visibility:visible}
 .dr-bg{position:absolute;inset:0;background:rgba(10,24,32,.55);opacity:0;transition:opacity .2s}
