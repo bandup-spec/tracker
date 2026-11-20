@@ -2,7 +2,8 @@
    Loaded on demand (nurse.js / the owner's Medicine tab). The server enforces who may do what; this file only hides what a role cannot use. */
 (function(C){
 'use strict';
-var S=C.S,H=C.H,$=C.$,esc=C.esc,api=C.api,fail=C.fail,toast=C.toast,openSheet=C.openSheet,closeSheet=C.closeSheet,shHead=C.shHead,mdy=C.mdy,today=C.today,longD=C.longD,ask=C.ask;
+var S=C.S,H=C.H,$=C.$,esc=C.esc,api=C.api,fail=C.fail,toast=C.toast,openSheet=C.openSheet,closeSheet=C.closeSheet,shHead=C.shHead,mdy=C.mdy,longD=C.longD,ask=C.ask;
+function today(){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date());}   /* the school's date (Manila), whatever the device's time zone */
 var M={mode:'nurse',tab:'give',root:null,meds:null,people:null,q:'',pick:null,rep:null,
   g:{kind:'student',person:null,med:null,qty:1,reason:'',other:''},
   r:{view:'given',from:'',to:'',person:null,med:null,rows:null}};
@@ -19,17 +20,18 @@ var KIND={student:'Student',teacher:'Teacher',other:'Other'};
 
 /* ---------- mount / tabs ---------- */
 function mount(root,mode){
-  M.root=root;M.mode=mode;M.tab=mode==='nurse'?'give':'stock';M.meds=null;M.r.rows=null;
+  M.root=root;M.mode=mode;M.tab=mode==='nurse'?'give':'stock';M.meds=null;M.r.rows=null;M.tb=0;
   root.innerHTML=C.skel('list');
-  Promise.all([api('medList'),M.people?null:api('medPeople')]).then(function(r){M.meds=r[0];if(r[1])M.people=r[1];draw();}).catch(fail);
+  Promise.all([api('medList'),M.people?null:api('medPeople'),teacherCount()]).then(function(r){M.meds=r[0];if(r[1])M.people=r[1];draw();}).catch(fail);
 }
-function refresh(){return api('medList').then(function(l){M.meds=l;if(M.g.med)M.g.med=medById(M.g.med.id)||null;draw();});}
+function teacherCount(){return api('medLog',{view:'teacher',from:today(),to:today()}).then(function(rows){M.tb=rows.filter(function(x){return !x.voided;}).length;}).catch(function(){});}   /* doses teachers recorded today, shown on the Records tab */
+function refresh(){return Promise.all([api('medList'),teacherCount()]).then(function(a){var l=a[0];M.meds=l;if(M.g.med)M.g.med=medById(M.g.med.id)||null;draw();});}
 function go(tab){M.tab=tab;if(M.meds)draw();}
 function tabs(){return M.mode==='nurse'?[['give','Give medicine'],['stock','Stock'],['rec','Records'],['set','Settings']]:[['stock','Stock'],['rec','Records']];}
 function draw(){
   if(!M.root||!document.body.contains(M.root))return;
   var attention=M.meds.filter(function(m){return m.active&&flags(m).length;}).length;
-  M.root.innerHTML='<div class="med"><div class="seg med-tabs">'+tabs().map(function(t){return '<button class="'+(M.tab===t[0]?'on':'')+'" data-act="mTab" data-v="'+t[0]+'">'+t[1]+(t[0]==='stock'&&attention?' <i class="med-badge">'+attention+'</i>':'')+'</button>';}).join('')+'</div><div id="medBody"></div></div>';
+  M.root.innerHTML='<div class="med"><div class="seg med-tabs">'+tabs().map(function(t){return '<button class="'+(M.tab===t[0]?'on':'')+'" data-act="mTab" data-v="'+t[0]+'">'+t[1]+(t[0]==='stock'&&attention?' <i class="med-badge">'+attention+'</i>':'')+(t[0]==='rec'&&M.tb?' <i class="med-badge teal">'+M.tb+'</i>':'')+'</button>';}).join('')+'</div><div id="medBody"></div></div>';
   var b=$('#medBody');
   b.innerHTML={give:giveHtml,stock:stockHtml,rec:recHtml,set:setHtml}[M.tab]();
   if(M.tab==='stock')bindStock();
@@ -37,17 +39,7 @@ function draw(){
 }
 H.mTab=function(el){keepGive();M.tab=el.dataset.v;draw();};
 
-/* ---------- searchable dropdown (a popup with a search box) ---------- */
-function pickSheet(title,items,cb){
-  M.pick={items:items,cb:cb};
-  openSheet(shHead(title,'')+'<input class="inp" id="mpQ" placeholder="Type to search…" autocomplete="off"><div id="mpList"></div>');
-  function drawList(){
-    var q=$('#mpQ').value.trim().toLowerCase(),shown=items.map(function(it,i){return [it,i];}).filter(function(x){return !q||x[0].label.toLowerCase().indexOf(q)>=0||(x[0].sub||'').toLowerCase().indexOf(q)>=0;}).slice(0,100);
-    $('#mpList').innerHTML=shown.length?shown.map(function(x){var it=x[0];return '<button class="mp-row" data-act="mpPick" data-i="'+x[1]+'">'+(it.av?C.avatar(it.av[0],it.av[1],it.label,34):'')+'<span><b>'+esc(it.label)+'</b>'+(it.sub?'<small>'+esc(it.sub)+'</small>':'')+'</span></button>';}).join(''):'<div class="empty"><b>No matches</b></div>';
-  }
-  drawList();$('#mpQ').addEventListener('input',drawList);$('#mpQ').focus();
-}
-H.mpPick=function(el){var it=M.pick.items[+el.dataset.i],cb=M.pick.cb;closeSheet();cb(it);};
+var pickSheet=C.pickSheet;   /* searchable popup, shared with the teacher screen */
 function peopleItems(kind){
   var p=M.people||{teachers:[],students:[]};
   if(kind==='student')return p.students.map(function(s){return {id:s.id,label:s.name,sub:'Student',kind:'student',av:['student',s.id]};});
@@ -65,6 +57,7 @@ function giveHtml(){
       :'<button class="selbtn" style="margin-top:8px" data-act="mgPerson">'+(g.person?'<span class="sb-v">'+C.avatar(g.kind,g.person.id,g.person.label,26)+' '+esc(g.person.label)+'</span>':'<span class="sb-ph">Choose '+g.kind+'…</span>')+'<i>▾</i></button>')+
     '<div class="lbl">Medicine</div><button class="selbtn" data-act="mgMed">'+(m?'<span class="sb-v">'+esc(lab(m))+'</span>':'<span class="sb-ph">Choose medicine…</span>')+'<i>▾</i></button>'+
     (m?'<div class="mg-avail'+(m.stock<=m.low?' low':'')+'">'+esc(lab(m))+' has <b>'+m.stock+'</b> available</div>':'')+
+    (m&&m.description?'<div class="hint" style="margin-top:6px;white-space:pre-line">'+esc(m.description)+'</div>':'')+
     '<div class="lbl">Quantity'+(m&&m.unit?' ('+esc(m.unit)+')':'')+'</div><div class="stepper"><button data-act="mgQty" data-d="-1" aria-label="Less">−</button><b>'+g.qty+'</b><button data-act="mgQty" data-d="1" aria-label="More">+</button></div>'+
     '<div class="lbl">Reason (optional)</div><input class="inp" id="mgReason" maxlength="100" autocomplete="off" placeholder="e.g. headache" value="'+esc(g.reason)+'">'+
     '<div class="rsn">'+['Headache','Fever','Stomachache','Cough','Cramps'].map(function(c){return '<button class="mini" data-act="mgChip" data-v="'+c+'">'+c+'</button>';}).join('')+'</div>'+
@@ -102,7 +95,7 @@ function stockList(){
   var q=M.q.trim().toLowerCase(),nurse=M.mode==='nurse',list=M.meds.filter(function(m){return !q||lab(m).toLowerCase().indexOf(q)>=0;});
   $('#msList').innerHTML=list.length?list.map(function(m){
     return '<div class="card med-card'+(m.active?'':' off')+'"><div class="mc-top"><div><b>'+esc(lab(m))+'</b><small>'+esc(m.unit||'')+(m.expiry?' · expires '+mdy(m.expiry):'')+(nurse&&m.purchased?' · bought '+mdy(m.purchased):'')+(m.active?'':' · hidden')+'</small></div><div class="mc-n'+(m.stock<=m.low?' low':'')+'">'+m.stock+'</div></div>'+
-      (flags(m).length?'<div class="mc-flags">'+flags(m).map(function(f){return '<span class="tag '+(f[0]==='out'?'A':'L')+'">'+esc(f[1])+'</span>';}).join('')+'</div>':'')+
+      (m.description?'<div class="mc-desc">'+esc(m.description)+'</div>':'')+(flags(m).length?'<div class="mc-flags">'+flags(m).map(function(f){return '<span class="tag '+(f[0]==='out'?'A':'L')+'">'+esc(f[1])+'</span>';}).join('')+'</div>':'')+
       (nurse?'<div class="mc-acts"><button class="btn ghost sm" data-act="msAdd" data-id="'+m.id+'">+ Add stock</button><button class="btn ghost sm" data-act="msSet" data-id="'+m.id+'">Correct count</button><button class="btn ghost sm" data-act="msEdit" data-id="'+m.id+'">Edit</button></div>':'')+'</div>';
   }).join(''):'<div class="empty"><b>No medicines found</b>'+(nurse?'Tap + New to add one.':'The nurse has not added any yet.')+'</div>';
 }
@@ -113,10 +106,11 @@ H.msAddSave=function(el){api('medStock',{id:el.dataset.id,mode:'add',qty:$('#saQ
 H.msSet=function(el){var m=medById(el.dataset.id);openSheet(shHead('Correct the count',esc(lab(m)))+'<div class="hint" style="margin:0 0 8px">Use this after counting the box. Currently <b>'+m.stock+'</b>.</div><label class="lbl">Counted</label><input class="inp" id="scQ" type="number" inputmode="numeric" min="0" value="'+m.stock+'"><label class="lbl">Note (optional)</label><input class="inp" id="scN" maxlength="100" placeholder="e.g. monthly count"><div class="sh-f"><button class="btn ghost" data-act="closeSheet">Cancel</button><button class="btn green" data-act="msSetSave" data-id="'+m.id+'">Save</button></div>');};
 H.msSetSave=function(el){api('medStock',{id:el.dataset.id,mode:'set',qty:$('#scQ').value,note:$('#scN').value}).then(function(r){closeSheet();return saved(r);}).catch(fail);};
 function medForm(m){
-  var isNew=!m;m=m||{name:'',strength:'',unit:'tablet',low:5,expiry:'',purchased:'',stock:0,active:true};
+  var isNew=!m;m=m||{name:'',strength:'',unit:'tablet',low:5,expiry:'',purchased:'',description:'',stock:0,active:true};
   openSheet(shHead(isNew?'New medicine':'Edit medicine',isNew?'':esc(lab(m)))+
     '<label class="lbl">Name</label><input class="inp" id="mfN" maxlength="60" autocomplete="off" value="'+esc(m.name)+'" placeholder="e.g. Paracetamol">'+
     '<label class="lbl">Strength (optional)</label><input class="inp" id="mfS" maxlength="40" autocomplete="off" value="'+esc(m.strength)+'" placeholder="e.g. 500 mg">'+
+    '<label class="lbl">Description (optional)</label><textarea class="inp" id="mfD" rows="3" maxlength="300" placeholder="e.g. For headache and fever. Adults: 1 to 2 tablets, not more than 4 a day.">'+esc(m.description||'')+'</textarea>'+
     '<label class="lbl">Unit</label><input class="inp" id="mfU" maxlength="20" autocomplete="off" value="'+esc(m.unit)+'" placeholder="tablet, bottle, sachet…">'+
     '<label class="lbl">Warn me when stock is at or below</label><input class="inp" id="mfL" type="number" inputmode="numeric" min="0" value="'+m.low+'">'+
     '<label class="lbl">Date purchased (optional)</label><input class="inp" id="mfP" type="date" value="'+esc(m.purchased||'')+'">'+
@@ -127,7 +121,7 @@ function medForm(m){
 H.msNew=function(){medForm(null);};
 H.msEdit=function(el){medForm(medById(el.dataset.id));};
 H.mfSave=function(el){
-  var id=el.dataset.id,body={id:id,name:$('#mfN').value,strength:$('#mfS').value,unit:$('#mfU').value,low:$('#mfL').value,expiry:$('#mfE').value,purchased:$('#mfP').value};
+  var id=el.dataset.id,body={id:id,name:$('#mfN').value,strength:$('#mfS').value,unit:$('#mfU').value,low:$('#mfL').value,expiry:$('#mfE').value,purchased:$('#mfP').value,description:$('#mfD').value};
   if(id)body.active=$('#mfA').checked;else body.stock=$('#mfK').value;
   api('medSave',body).then(function(r){closeSheet();return saved(r);}).catch(fail);
 };
@@ -135,7 +129,7 @@ H.mfSave=function(el){
 /* ---------- Records ---------- */
 function recHtml(){
   var r=M.r;if(!r.from){r.from=C.add(today(),-30);r.to=today();}
-  return '<div class="card" style="padding:12px"><div class="seg med-kinds">'+[['given','Given'],['stock','Stock changes']].map(function(v){return '<button class="'+(r.view===v[0]?'on':'')+'" data-act="rcView" data-v="'+v[0]+'">'+v[1]+'</button>';}).join('')+'</div>'+
+  return '<div class="card" style="padding:12px"><div class="seg med-kinds">'+[['given','Given'],['teacher','By teachers'],['stock','Stock changes']].map(function(v){return '<button class="'+(r.view===v[0]?'on':'')+'" data-act="rcView" data-v="'+v[0]+'">'+v[1]+'</button>';}).join('')+'</div>'+
     '<div class="rec-dates"><label>From<input class="inp" type="date" id="rcFrom" value="'+esc(r.from)+'"></label><label>To<input class="inp" type="date" id="rcTo" value="'+esc(r.to)+'"></label></div>'+
     '<div class="rec-filters"><button class="selbtn" data-act="rcPerson"><span class="'+(r.person?'sb-v':'sb-ph')+'">'+esc(r.person?r.person.label:'Anyone')+'</span><i>▾</i></button><button class="selbtn" data-act="rcMed"><span class="'+(r.med?'sb-v':'sb-ph')+'">'+esc(r.med?lab(r.med):'Any medicine')+'</span><i>▾</i></button></div>'+
     '<div style="display:flex;gap:8px;margin-top:10px"><button class="btn green sm" data-act="rcGo">Show</button><button class="btn ghost sm" data-act="rcClear">Clear</button><button class="btn ghost sm" style="margin-left:auto" data-act="rcReport">Report…</button></div></div><div id="rcList"><div class="loading"></div></div>';
@@ -151,13 +145,19 @@ function recList(){
   var o='',day='',doses=0,who={};
   rows.forEach(function(x){
     if(x.date!==day){day=x.date;o+='<div class="rc-day">'+esc(longD(day))+'</div>';}
-    if(x.kind==='dispense'){doses+=-x.delta;who[x.personKind+':'+(x.personId||x.person)]=1;
-      o+='<div class="rc-row"><div class="rc-t">'+esc(x.time)+'</div><div class="rc-m"><b>'+esc(x.person)+'</b> <span class="kind-chip">'+esc(KIND[x.personKind]||'')+'</span><br>'+esc(x.medicine)+' × '+(-x.delta)+(x.reason?' <small>· '+esc(x.reason)+'</small>':'')+'<br><small>given by '+esc(x.by)+'</small></div></div>';}
-    else{var t=x.kind==='restock'?'Stock added +'+x.delta:x.kind==='adjust'?'Count corrected '+(x.delta>0?'+':'')+x.delta:'Details edited';
+    if(x.kind==='dispense'){if(!x.voided){doses+=-x.delta;who[x.personKind+':'+(x.personId||x.person)]=1;}
+      o+='<div class="rc-row'+(x.voided?' voided':'')+'"><div class="rc-t">'+esc(x.time)+'</div><div class="rc-m"><b>'+esc(x.person)+'</b> <span class="kind-chip">'+esc(KIND[x.personKind]||'')+'</span><br>'+esc(x.medicine)+' × '+(-x.delta)+(x.reason?' <small>· '+esc(x.reason)+'</small>':'')+'<br><small>'+(x.byTeacher?'recorded by teacher '+esc(x.by):'given by '+esc(x.by))+'</small>'+(x.byTeacher&&!x.voided?' <span class="kind-chip warn">By teacher</span>':'')+(x.voided?' <span class="kind-chip">Cancelled</span>':'')+(M.mode==='nurse'&&!x.voided?'<br><button class="mini" style="margin-top:4px" data-act="rcVoid" data-id="'+x.id+'" data-q="'+(-x.delta)+'">Cancel dose</button>':'')+'</div></div>';}
+    else{var t=x.kind==='restock'?'Stock added +'+x.delta:x.kind==='void'?'Dose cancelled +'+x.delta:x.kind==='adjust'?'Count corrected '+(x.delta>0?'+':'')+x.delta:'Details edited';
       o+='<div class="rc-row"><div class="rc-t">'+esc(x.time)+'</div><div class="rc-m"><b>'+esc(x.medicine)+'</b><br>'+esc(t)+' → '+x.balance+' in stock'+(x.reason?' <small>· '+esc(x.reason)+'</small>':'')+'<br><small>by '+esc(x.by)+'</small></div></div>';}
   });
-  el.innerHTML=(M.r.view==='given'?'<p class="hint" style="margin:10px 0 0">'+doses+' dose'+(doses===1?'':'s')+' given to '+Object.keys(who).length+' '+(Object.keys(who).length===1?'person':'people')+'.'+(rows.length>=1000?' Showing the latest 1000.':'')+'</p>':'')+o;
+  el.innerHTML=(M.r.view!=='stock'?'<p class="hint" style="margin:10px 0 0">'+doses+' dose'+(doses===1?'':'s')+' given to '+Object.keys(who).length+' '+(Object.keys(who).length===1?'person':'people')+'.'+(rows.length>=1000?' Showing the latest 1000.':'')+'</p>':'')+o;
 }
+H.rcVoid=function(el){
+  var id=el.dataset.id;
+  ask('Cancel this dose? The '+el.dataset.q+' will be added back to the stock. The record stays, marked as cancelled.',function(){
+    api('medVoid',{id:id}).then(function(r){M.r.rows=null;return refresh().then(function(){toast(r.name+' has '+r.stock+' available','ok');});}).catch(fail);
+  });
+};
 H.rcView=function(el){keepRec();M.r.view=el.dataset.v;M.r.rows=null;draw();};
 H.rcGo=function(){keepRec();M.r.rows=null;loadRec();};
 H.rcClear=function(){M.r.person=null;M.r.med=null;M.r.from=C.add(today(),-30);M.r.to=today();M.r.rows=null;draw();};
