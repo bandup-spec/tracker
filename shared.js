@@ -175,18 +175,27 @@ H.phSave=function(){if(!PH.b64)return;api('setAvatar',{kind:PH.kind,id:PH.id,ima
 H.phDel=function(){ask('Remove this photo?',function(){api('removeAvatar',{kind:PH.kind,id:PH.id}).then(function(){avRefresh(PH.kind,PH.id);closeSheet();toast('Photo removed','ok');}).catch(fail);});};
 H.myPhoto=function(){if(H.drawClose)H.drawClose();var u=S.user;photoSheet(u.role==='teacher'?'teacher':'admin',u.id,u.name,true);};
 
-/* ---- teachers: "Not feeling well?" shows the nurse and what is in stock (no counts, no records) ---- */
-H.unwell=function(){
-  if(H.drawClose)H.drawClose();
-  var head=shHead('Not feeling well?','Ask the nurse for medicine'),sh=openSheet(head+skel('list'),{full:true});
-  api('medAvailability').then(function(d){
-    var st={in:['P','In stock'],low:['L','Few left'],out:['A','Out of stock']};
-    sh.innerHTML=head+'<div class="card" style="padding:14px;margin-bottom:14px">'+
-      (d.nurses.length?d.nurses.map(function(n){return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">'+avatarHtml('admin',n.id,n.name,52)+'<div><b>Nurse '+esc(n.name)+'</b></div></div>';}).join(''):'<b>No nurse has been set up yet.</b>')+
-      (d.note?'<div style="margin-top:4px">'+esc(d.note)+'</div>':'')+'<div class="hint" style="margin-top:8px">Please go to the nurse and ask for the medicine you need.</div></div>'+
-      '<div class="ap-label">What is in stock</div>'+
-      (d.items.length?d.items.map(function(m){var s=st[m.status]||st.out;return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)"><span>'+esc(m.name)+(m.unit?' <small style="color:var(--mut)">('+esc(m.unit)+')</small>':'')+'</span><span class="tag '+s[0]+'">'+s[1]+'</span></div>';}).join(''):'<div class="empty"><b>No medicines listed yet</b></div>');
-  }).catch(function(e){closeSheet();fail(e);});
+/* ---- teachers: "Not feeling well?" opens take.js, where they choose the medicine, how many, and who it is for ---- */
+H.unwell=function(){C.loadJs('take.js').then(function(){C.take.open();}).catch(fail);};
+
+/* ---- searchable pick list (used by take.js and medicine.js): items are {id,label,sub,av:[kind,id]} ---- */
+var PK={items:[],cb:null,q:''};
+function pkRows(){
+  var q=PK.q.trim().toLowerCase(),rows=PK.items.filter(function(i){return !q||i.label.toLowerCase().indexOf(q)>=0;}).slice(0,80);
+  $('#pkList').innerHTML=rows.length?rows.map(function(i){
+    return '<button class="tk-row" data-act="pkSel" data-id="'+esc(i.id)+'"><span style="display:flex;align-items:center;gap:10px">'+(i.av?avatarHtml(i.av[0],i.av[1],i.label,30):'')+'<span>'+esc(i.label)+'</span></span>'+(i.sub?'<small style="color:var(--mut)">'+esc(i.sub)+'</small>':'')+'</button>';
+  }).join(''):'<div class="empty"><b>No match</b></div>';
+  avHydrate();
+}
+function pickSheet(title,items,cb){
+  PK.items=items;PK.cb=cb;PK.q='';
+  openSheet(shHead(esc(title),'')+'<input class="inp" id="pkQ" placeholder="Search…" autocomplete="off"><div id="pkList"></div>',{full:true});
+  $('#pkQ').addEventListener('input',function(){PK.q=this.value;pkRows();});
+  pkRows();
+}
+H.pkSel=function(el){
+  var it=PK.items.filter(function(x){return x.id===el.dataset.id;})[0],cb=PK.cb;
+  if(!it)return;closeSheet();if(cb)cb(it);
 };
 
 /* ---- crash / error reporting: captured here, saved on the server, read in the admin's Diagnostics tab ---- */
@@ -285,7 +294,7 @@ function drawerHtml(items){
   var u=S.user,adm=u.role==='admin';
   return '<div class="drawer" id="drawer"><div class="dr-bg" data-act="drawClose"></div><nav class="dr-pan"><div class="dr-h dr-who"><button class="av-btn" data-act="myPhoto" aria-label="My photo">'+avatarHtml(u.role==='teacher'?'teacher':'admin',u.id,u.name,46)+'</button><div><b>CWA Attendance Tracker</b><small>'+esc(u.role==='teacher'?u.name:S.boot.org+' · '+u.name)+'</small></div></div><div class="dr-list">'+
     items.map(function(m){return '<button class="dr-i'+(adm&&m.t===S.tab?' on':'')+'" data-act="drawDo" data-do="'+m.doo+'"'+(m.t?' data-t="'+m.t+'"':'')+'>'+esc(m.label)+'</button>';}).join('')+
-    '<button class="dr-i" data-act="drawDo" data-do="myPhoto">My profile photo</button><button class="dr-i" data-act="drawDo" data-do="appearance">Appearance</button>'+
+    '<button class="dr-i" data-act="drawDo" data-do="myPhoto">My profile photo</button><button class="dr-i" data-act="drawDo" data-do="appearance">Appearance</button>'+(u.role==='teacher'?'<button class="dr-i" data-act="drawDo" data-do="unwell">Not feeling well?</button>':'')+
     '</div><div class="dr-f"><button class="dr-i" data-act="drawDo" data-do="logout">Sign out</button></div></nav></div>';
 }
 H.menu=function(){var d=$('#drawer');if(d)d.classList.add('open');};
@@ -582,6 +591,6 @@ Object.assign(C,{$:$,app:app,esc:esc,api:api,fail:fail,toast:toast,log:log,openS
   copyText:copyText,printHtml:printHtml,markSheet:markSheet,drawerHtml:drawerHtml,courseOpts:courseOpts,setBoot:setBoot,setDebug:setDebug,setHol:setHol,selfTest:selfTest,
   add:add,addMonth:addMonth,allDays:allDays,allHrs:allHrs,calcEnd:calcEnd,clamp:clamp,dow:dow,holOf:holOf,hrs:hrs,iso:iso,isOff:isOff,lastClassDay:lastClassDay,lateAbs:lateAbs,longD:longD,lunchShown:lunchShown,
   mdy:mdy,monday:monday,monthEnd:monthEnd,monthName:monthName,monthStart:monthStart,nextMonday:nextMonday,nextWd:nextWd,pd:pd,today:today,upD:upD,weekEnd:weekEnd,weekdays:weekdays,
-  isRO:isRO,avatar:avatarHtml,photoSheet:photoSheet,avReset:avReset,reportErr:reportErr,skel:skel,ask:ask,saveText:saveText,weekDates:weekDates,rowInfo:rowInfo,namesText:namesText,loadWeek:loadWeek,weekBar:weekBar,weekEmpty:weekEmpty,actionBar:actionBar,gridHtml:gridHtml});
+  isRO:isRO,pickSheet:pickSheet,avatar:avatarHtml,photoSheet:photoSheet,avReset:avReset,reportErr:reportErr,skel:skel,ask:ask,saveText:saveText,weekDates:weekDates,rowInfo:rowInfo,namesText:namesText,loadWeek:loadWeek,weekBar:weekBar,weekEmpty:weekEmpty,actionBar:actionBar,gridHtml:gridHtml});
 window.CWA=C;
 })();
