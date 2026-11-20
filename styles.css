@@ -347,3 +347,12 @@ td.miss{background:var(--bad-soft)}
 .rec-dates{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.rec-dates label{font-size:12px;color:var(--mut)}.rec-filters{display:grid;gap:8px}
 .rc-day{font-weight:700;margin:14px 0 4px}.rc-row{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line)}.rc-t{width:56px;flex:none;color:var(--mut);font-size:13px}.rc-m small{color:var(--mut)}
 .kind-chip{display:inline-block;padding:1px 7px;border-radius:8px;background:var(--tint2);color:var(--mut);font-size:11px;font-weight:700}
+
+/* teacher take-medicine + nurse review */
+.tk-row{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;padding:12px 4px;border:0;border-top:1px solid var(--line);background:none;color:var(--ink);text-align:left;font-size:15px}
+.tk-row.off{opacity:.55}.tk-mine{padding:8px 0;border-top:1px solid var(--line)}.tk-mine small{color:var(--mut)}
+.rc-row.voided .rc-m{opacity:.55;text-decoration:line-through}.rc-row.voided .rc-m small,.rc-row.voided .rc-m .kind-chip,.rc-row.voided .rc-m button{text-decoration:none}
+.kind-chip.warn{background:var(--l-bg);color:var(--l-fg)}.med-badge.teal{background:var(--soft);color:var(--brand-ink)}
+.mc-desc{margin-top:6px;color:var(--mut);font-size:13px;line-height:1.35;white-space:pre-line}
+.tk-desc{display:block;color:var(--mut);font-size:12.5px;margin-top:2px;line-height:1.3;white-space:normal}
+.tk-row .tag{white-space:nowrap;flex:none}
