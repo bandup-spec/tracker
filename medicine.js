@@ -99,10 +99,11 @@ H.mgGive=function(){
   if(!g.med){toast('Choose the medicine first.');return;}
   if(g.qty>g.med.stock){toast(lab(g.med)+' has only '+g.med.stock+' available.');return;}
   ask('Give '+g.qty+' × '+lab(g.med)+' to '+name+'? '+(g.med.stock-g.qty)+' will remain.',function(){
+    if(M.busy)return;M.busy=true;   /* ignore a double tap */
     api('medGive',{medicineId:g.med.id,qty:g.qty,personKind:g.kind,personId:g.person?g.person.id:'',personName:g.kind==='other'?name:'',reason:g.reason}).then(function(r){
       M.g={kind:g.kind,person:null,med:null,qty:1,reason:'',other:''};M.r.rows=null;
       return refresh().then(function(){toast(r.name+' has '+r.remaining+' available','ok');});
-    }).catch(function(e){fail(e);refresh();});
+    }).catch(function(e){fail(e);refresh();}).then(function(){M.busy=false;});
   });
 };
 
