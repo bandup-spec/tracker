@@ -6,21 +6,21 @@
 var S=C.S,H=C.H,$=C.$,esc=C.esc,api=C.api,fail=C.fail,toast=C.toast,openSheet=C.openSheet,closeSheet=C.closeSheet,shHead=C.shHead,mdy=C.mdy;
 /* searchable pick popup: uses the shared one when shared.js has it, otherwise this copy (so a stale shared.js cannot break the pickers) */
 if(typeof C.pickSheet!=='function'){(function(){
-  var PK={items:[],cb:null,q:''};
+  var PS={items:[],cb:null,q:''};
   function rows(){
-    var q=PK.q.trim().toLowerCase(),list=PK.items.filter(function(i){return !q||String(i.label).toLowerCase().indexOf(q)>=0;}).slice(0,80);
-    document.getElementById('pkList').innerHTML=list.length?list.map(function(i){
-      return '<button class="tk-row" data-act="pkSel" data-id="'+C.esc(i.id)+'"><span>'+C.esc(i.label)+'</span>'+(i.sub?'<small style="color:var(--mut)">'+C.esc(i.sub)+'</small>':'')+'</button>';
+    var q=PS.q.trim().toLowerCase(),list=PS.items.filter(function(i){return !q||String(i.label).toLowerCase().indexOf(q)>=0;}).slice(0,80);
+    document.getElementById('psList').innerHTML=list.length?list.map(function(i){
+      return '<button class="tk-row" data-act="psSel" data-id="'+C.esc(i.id)+'"><span>'+C.esc(i.label)+'</span>'+(i.sub?'<small style="color:var(--mut)">'+C.esc(i.sub)+'</small>':'')+'</button>';
     }).join(''):'<div class="empty"><b>No match</b></div>';
   }
   C.pickSheet=function(title,items,cb){
-    PK.items=items;PK.cb=cb;PK.q='';
-    C.openSheet(C.shHead(C.esc(title),'')+'<input class="inp" id="pkQ" placeholder="Search…" autocomplete="off"><div id="pkList"></div>',{full:true});
-    document.getElementById('pkQ').addEventListener('input',function(){PK.q=this.value;rows();});
+    PS.items=items;PS.cb=cb;PS.q='';
+    C.openSheet(C.shHead(C.esc(title),'')+'<input class="inp" id="psQ" placeholder="Search…" autocomplete="off"><div id="psList"></div>',{full:true});
+    document.getElementById('psQ').addEventListener('input',function(){PS.q=this.value;rows();});
     rows();
   };
-  C.H.pkSel=function(el){
-    var it=PK.items.filter(function(x){return String(x.id)===el.dataset.id;})[0],cb=PK.cb;
+  C.H.psSel=function(el){
+    var it=PS.items.filter(function(x){return String(x.id)===el.dataset.id;})[0],cb=PS.cb;
     if(!it)return;C.closeSheet();if(cb)cb(it);
   };
 })();}
