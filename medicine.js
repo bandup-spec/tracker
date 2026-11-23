@@ -158,7 +158,7 @@ function recHtml(){
 function keepRec(){var a=$('#rcFrom'),b=$('#rcTo');if(a)M.r.from=a.value;if(b)M.r.to=b.value;}
 function loadRec(){
   var r=M.r;$('#rcList').innerHTML=C.skel('list');
-  api('medLog',{view:r.view,from:r.from,to:r.to,personKind:r.person?r.person.kind:'',personId:r.person?r.person.id:'',medicineId:r.med?r.med.id:''}).then(function(rows){r.rows=rows;recList();}).catch(function(e){$('#rcList').innerHTML='';fail(e);});
+  api('medLog',{view:r.view,from:r.from,to:r.to,personKind:r.person?r.person.kind:'',personId:r.person?r.person.id:'',medicineId:r.med?r.med.id:''}).then(function(rows){r.rows=rows;recList();}).catch(function(e){var l=$('#rcList');if(l)l.innerHTML='';fail(e);});   /* the list may be gone already if the session ended meanwhile */
 }
 function recList(){
   var rows=M.r.rows,el=$('#rcList');if(!el)return;
