@@ -293,10 +293,29 @@ H.closeSheet=function(){closeSheet();};
 function drawerHtml(items){
   var u=S.user,adm=u.role==='admin';
   return '<div class="drawer" id="drawer"><div class="dr-bg" data-act="drawClose"></div><nav class="dr-pan"><div class="dr-h dr-who"><button class="av-btn" data-act="myPhoto" aria-label="My photo">'+avatarHtml(u.role==='teacher'?'teacher':'admin',u.id,u.name,46)+'</button><div><b>CWA Attendance Tracker</b><small>'+esc(u.role==='teacher'?u.name:S.boot.org+' · '+u.name)+'</small></div></div><div class="dr-list">'+
-    items.map(function(m){return '<button class="dr-i'+(adm&&m.t===S.tab?' on':'')+'" data-act="drawDo" data-do="'+m.doo+'"'+(m.t?' data-t="'+m.t+'"':'')+'>'+esc(m.label)+'</button>';}).join('')+
-    '<button class="dr-i" data-act="drawDo" data-do="myPhoto">My profile photo</button><button class="dr-i" data-act="drawDo" data-do="appearance">Appearance</button>'+(u.role==='teacher'?'<button class="dr-i" data-act="drawDo" data-do="unwell">Not feeling well?</button>':'')+
-    '</div><div class="dr-f"><button class="dr-i" data-act="drawDo" data-do="logout">Sign out</button></div></nav></div>';
+    items.map(function(m){return '<button class="dr-i'+(adm&&m.t===S.tab?' on':'')+'" data-act="drawDo" data-do="'+m.doo+'"'+(m.t?' data-t="'+m.t+'"':'')+'>'+ic(m.doo)+esc(m.label)+'</button>';}).join('')+
+    '<button class="dr-i" data-act="drawDo" data-do="myPhoto">'+ic('myPhoto')+'My profile photo</button><button class="dr-i" data-act="drawDo" data-do="appearance">'+ic('appearance')+'Appearance</button>'+(u.role==='teacher'?'<button class="dr-i" data-act="drawDo" data-do="unwell">'+ic('unwell')+'Not feeling well?</button>':'')+
+    '</div><div class="dr-f"><button class="dr-i" data-act="drawDo" data-do="logout">'+ic('logout')+'Sign out</button></div></nav></div>';
 }
+/* minimal line icons for the side menu (24px grid, drawn with the text colour) */
+var IC={
+  lessonOpen:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+  tvMine:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  tvOthers:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+  wkToday:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  copyMenu:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  wkRefresh:'<path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
+  reportProblem:'<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>',
+  myPhoto:'<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+  appearance:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>',
+  unwell:'<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/>',
+  logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/>',
+  nvGive:'<path d="M10.5 20.5a5 5 0 0 1-7-7l10-10a5 5 0 0 1 7 7z"/><path d="M8.5 8.5l7 7"/>',
+  nvStock:'<path d="M21 8v13H3V8"/><path d="M1 3h22v5H1zM10 12h4"/>',
+  nvRec:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  nvSet:'<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>'
+};
+function ic(k){return IC[k]?'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">'+IC[k]+'</svg>':'';}
 H.menu=function(){var d=$('#drawer');if(d)d.classList.add('open');};
 H.drawClose=function(){var d=$('#drawer');if(d)d.classList.remove('open');};
 H.drawDo=function(el){H.drawClose();var f=H[el.dataset.do];if(f)f(el);else console.error('[cwa] no handler H.'+el.dataset.do);};
