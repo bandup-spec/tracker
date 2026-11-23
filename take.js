@@ -88,9 +88,10 @@ H.tkCancel=function(el){
 H.tkGo=function(){
   keep();var t=K.t;
   if(t.forKind==='student'&&!t.student){toast('Choose the student first.');return;}
+  if(K.busy)return;K.busy=true;   /* a second tap while the first is saving must not record a second dose */
   api('medTake',{medicineId:t.med.id,qty:t.qty,forKind:t.forKind,studentId:t.student?t.student.id:'',reason:t.reason}).then(function(r){
     closeSheet();toast('Recorded: '+r.qty+' × '+r.name+(r.forKind==='student'?' for '+r.person:' for you')+'. The nurse will confirm it. Follow the label.','ok');load();
-  }).catch(function(e){fail(e);load();});
+  }).catch(function(e){fail(e);load();}).then(function(){K.busy=false;});
 };
 C.take={open:open};
 })(window.CWA);
