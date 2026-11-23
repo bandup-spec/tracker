@@ -24,7 +24,7 @@ function mount(root,mode){
   root.innerHTML=C.skel('list');
   Promise.all([api('medList'),M.people?null:api('medPeople'),teacherCount()]).then(function(r){M.meds=r[0];if(r[1])M.people=r[1];draw();}).catch(fail);
 }
-function teacherCount(){return api('medLog',{view:'teacher',from:today(),to:today()}).then(function(rows){M.tb=rows.filter(function(x){return !x.voided;}).length;}).catch(function(){});}   /* doses teachers recorded today, shown on the Records tab */
+function teacherCount(){return api('medLog',{view:'pending',from:C.add(today(),-60),to:today()}).then(function(rows){M.tb=rows.length;}).catch(function(){});}   /* teacher doses still waiting for the nurse to confirm, shown on the Records tab */
 function refresh(){return Promise.all([api('medList'),teacherCount()]).then(function(a){var l=a[0];M.meds=l;if(M.g.med)M.g.med=medById(M.g.med.id)||null;draw();});}
 function go(tab){M.tab=tab;if(M.meds)draw();}
 function tabs(){return M.mode==='nurse'?[['give','Give medicine'],['stock','Stock'],['rec','Records'],['set','Settings']]:[['stock','Stock'],['rec','Records']];}
@@ -39,6 +39,26 @@ function draw(){
 }
 H.mTab=function(el){keepGive();M.tab=el.dataset.v;draw();};
 
+/* searchable pick popup: uses the shared one when shared.js has it, otherwise this copy (so a stale shared.js cannot break the pickers) */
+if(typeof C.pickSheet!=='function'){(function(){
+  var PK={items:[],cb:null,q:''};
+  function rows(){
+    var q=PK.q.trim().toLowerCase(),list=PK.items.filter(function(i){return !q||String(i.label).toLowerCase().indexOf(q)>=0;}).slice(0,80);
+    document.getElementById('pkList').innerHTML=list.length?list.map(function(i){
+      return '<button class="tk-row" data-act="pkSel" data-id="'+C.esc(i.id)+'"><span>'+C.esc(i.label)+'</span>'+(i.sub?'<small style="color:var(--mut)">'+C.esc(i.sub)+'</small>':'')+'</button>';
+    }).join(''):'<div class="empty"><b>No match</b></div>';
+  }
+  C.pickSheet=function(title,items,cb){
+    PK.items=items;PK.cb=cb;PK.q='';
+    C.openSheet(C.shHead(C.esc(title),'')+'<input class="inp" id="pkQ" placeholder="Search…" autocomplete="off"><div id="pkList"></div>',{full:true});
+    document.getElementById('pkQ').addEventListener('input',function(){PK.q=this.value;rows();});
+    rows();
+  };
+  C.H.pkSel=function(el){
+    var it=PK.items.filter(function(x){return String(x.id)===el.dataset.id;})[0],cb=PK.cb;
+    if(!it)return;C.closeSheet();if(cb)cb(it);
+  };
+})();}
 var pickSheet=C.pickSheet;   /* searchable popup, shared with the teacher screen */
 function peopleItems(kind){
   var p=M.people||{teachers:[],students:[]};
@@ -129,7 +149,7 @@ H.mfSave=function(el){
 /* ---------- Records ---------- */
 function recHtml(){
   var r=M.r;if(!r.from){r.from=C.add(today(),-30);r.to=today();}
-  return '<div class="card" style="padding:12px"><div class="seg med-kinds">'+[['given','Given'],['teacher','By teachers'],['stock','Stock changes']].map(function(v){return '<button class="'+(r.view===v[0]?'on':'')+'" data-act="rcView" data-v="'+v[0]+'">'+v[1]+'</button>';}).join('')+'</div>'+
+  return '<div class="card" style="padding:12px"><div class="seg med-kinds">'+[['given','Given'],['teacher','By teachers'],['pending','To confirm'],['stock','Stock changes']].map(function(v){return '<button class="'+(r.view===v[0]?'on':'')+'" data-act="rcView" data-v="'+v[0]+'">'+v[1]+'</button>';}).join('')+'</div>'+
     '<div class="rec-dates"><label>From<input class="inp" type="date" id="rcFrom" value="'+esc(r.from)+'"></label><label>To<input class="inp" type="date" id="rcTo" value="'+esc(r.to)+'"></label></div>'+
     '<div class="rec-filters"><button class="selbtn" data-act="rcPerson"><span class="'+(r.person?'sb-v':'sb-ph')+'">'+esc(r.person?r.person.label:'Anyone')+'</span><i>▾</i></button><button class="selbtn" data-act="rcMed"><span class="'+(r.med?'sb-v':'sb-ph')+'">'+esc(r.med?lab(r.med):'Any medicine')+'</span><i>▾</i></button></div>'+
     '<div style="display:flex;gap:8px;margin-top:10px"><button class="btn green sm" data-act="rcGo">Show</button><button class="btn ghost sm" data-act="rcClear">Clear</button><button class="btn ghost sm" style="margin-left:auto" data-act="rcReport">Report…</button></div></div><div id="rcList"><div class="loading"></div></div>';
@@ -146,16 +166,27 @@ function recList(){
   rows.forEach(function(x){
     if(x.date!==day){day=x.date;o+='<div class="rc-day">'+esc(longD(day))+'</div>';}
     if(x.kind==='dispense'){if(!x.voided){doses+=-x.delta;who[x.personKind+':'+(x.personId||x.person)]=1;}
-      o+='<div class="rc-row'+(x.voided?' voided':'')+'"><div class="rc-t">'+esc(x.time)+'</div><div class="rc-m"><b>'+esc(x.person)+'</b> <span class="kind-chip">'+esc(KIND[x.personKind]||'')+'</span><br>'+esc(x.medicine)+' × '+(-x.delta)+(x.reason?' <small>· '+esc(x.reason)+'</small>':'')+'<br><small>'+(x.byTeacher?'recorded by teacher '+esc(x.by):'given by '+esc(x.by))+'</small>'+(x.byTeacher&&!x.voided?' <span class="kind-chip warn">By teacher</span>':'')+(x.voided?' <span class="kind-chip">Cancelled</span>':'')+(M.mode==='nurse'&&!x.voided?'<br><button class="mini" style="margin-top:4px" data-act="rcVoid" data-id="'+x.id+'" data-q="'+(-x.delta)+'">Cancel dose</button>':'')+'</div></div>';}
+      o+='<div class="rc-row'+(x.voided?' voided':'')+'"><div class="rc-t">'+esc(x.time)+'</div><div class="rc-m"><b>'+esc(x.person)+'</b> <span class="kind-chip">'+esc(KIND[x.personKind]||'')+'</span><br>'+esc(x.medicine)+' × '+(-x.delta)+(x.reason?' <small>· '+esc(x.reason)+'</small>':'')+'<br><small>'+(x.byTeacher?'recorded by teacher '+esc(x.by):'given by '+esc(x.by))+'</small>'+(x.byTeacher&&!x.voided?(x.confirmed?' <span class="kind-chip">✓ Confirmed by '+esc(x.confirmedBy)+'</span>':' <span class="kind-chip warn">Needs confirmation</span>'):'')+(x.voided?' <span class="kind-chip">Cancelled</span>':'')+(M.mode==='nurse'&&!x.voided?'<br>'+(x.byTeacher&&!x.confirmed?'<button class="mini" style="margin-top:4px;margin-right:6px" data-act="rcConfirm" data-id="'+x.id+'">Confirm taken</button>':'')+'<button class="mini" style="margin-top:4px" data-act="rcVoid" data-id="'+x.id+'" data-q="'+(-x.delta)+'">Cancel dose</button>':'')+'</div></div>';}
     else{var t=x.kind==='restock'?'Stock added +'+x.delta:x.kind==='void'?'Dose cancelled +'+x.delta:x.kind==='adjust'?'Count corrected '+(x.delta>0?'+':'')+x.delta:'Details edited';
       o+='<div class="rc-row"><div class="rc-t">'+esc(x.time)+'</div><div class="rc-m"><b>'+esc(x.medicine)+'</b><br>'+esc(t)+' → '+x.balance+' in stock'+(x.reason?' <small>· '+esc(x.reason)+'</small>':'')+'<br><small>by '+esc(x.by)+'</small></div></div>';}
   });
-  el.innerHTML=(M.r.view!=='stock'?'<p class="hint" style="margin:10px 0 0">'+doses+' dose'+(doses===1?'':'s')+' given to '+Object.keys(who).length+' '+(Object.keys(who).length===1?'person':'people')+'.'+(rows.length>=1000?' Showing the latest 1000.':'')+'</p>':'')+o;
+  var pend=rows.filter(function(x){return x.kind==='dispense'&&x.byTeacher&&!x.voided&&!x.confirmed;});
+  el.innerHTML=(M.mode==='nurse'&&pend.length?'<div class="card" style="padding:12px;margin-top:10px"><b>'+pend.length+' teacher dose'+(pend.length===1?'':'s')+' to confirm</b><p class="hint" style="margin:4px 0 8px">Confirm only if the medicine really was taken from the clinic.</p><button class="btn green sm" data-act="rcConfirmAll">Confirm all '+pend.length+'</button></div>':'')+(M.r.view!=='stock'?'<p class="hint" style="margin:10px 0 0">'+doses+' dose'+(doses===1?'':'s')+' given to '+Object.keys(who).length+' '+(Object.keys(who).length===1?'person':'people')+'.'+(rows.length>=1000?' Showing the latest 1000.':'')+'</p>':'')+o;
 }
 H.rcVoid=function(el){
   var id=el.dataset.id;
   ask('Cancel this dose? The '+el.dataset.q+' will be added back to the stock. The record stays, marked as cancelled.',function(){
     api('medVoid',{id:id}).then(function(r){M.r.rows=null;return refresh().then(function(){toast(r.name+' has '+r.stock+' available','ok');});}).catch(fail);
+  });
+};
+H.rcConfirm=function(el){
+  api('medConfirm',{ids:[Number(el.dataset.id)]}).then(function(){M.r.rows=null;return refresh().then(function(){toast('Confirmed','ok');});}).catch(fail);
+};
+H.rcConfirmAll=function(){
+  var ids=(M.r.rows||[]).filter(function(x){return x.kind==='dispense'&&x.byTeacher&&!x.voided&&!x.confirmed;}).map(function(x){return x.id;});
+  if(!ids.length)return;
+  ask('Confirm '+ids.length+' teacher dose'+(ids.length===1?'':'s')+' as taken from the clinic?',function(){
+    api('medConfirm',{ids:ids}).then(function(r){M.r.rows=null;return refresh().then(function(){toast(r.confirmed+' confirmed','ok');});}).catch(fail);
   });
 };
 H.rcView=function(el){keepRec();M.r.view=el.dataset.v;M.r.rows=null;draw();};
