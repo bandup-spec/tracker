@@ -4,6 +4,26 @@
 (function(C){
 'use strict';
 var S=C.S,H=C.H,$=C.$,esc=C.esc,api=C.api,fail=C.fail,toast=C.toast,openSheet=C.openSheet,closeSheet=C.closeSheet,shHead=C.shHead,mdy=C.mdy;
+/* searchable pick popup: uses the shared one when shared.js has it, otherwise this copy (so a stale shared.js cannot break the pickers) */
+if(typeof C.pickSheet!=='function'){(function(){
+  var PK={items:[],cb:null,q:''};
+  function rows(){
+    var q=PK.q.trim().toLowerCase(),list=PK.items.filter(function(i){return !q||String(i.label).toLowerCase().indexOf(q)>=0;}).slice(0,80);
+    document.getElementById('pkList').innerHTML=list.length?list.map(function(i){
+      return '<button class="tk-row" data-act="pkSel" data-id="'+C.esc(i.id)+'"><span>'+C.esc(i.label)+'</span>'+(i.sub?'<small style="color:var(--mut)">'+C.esc(i.sub)+'</small>':'')+'</button>';
+    }).join(''):'<div class="empty"><b>No match</b></div>';
+  }
+  C.pickSheet=function(title,items,cb){
+    PK.items=items;PK.cb=cb;PK.q='';
+    C.openSheet(C.shHead(C.esc(title),'')+'<input class="inp" id="pkQ" placeholder="Search…" autocomplete="off"><div id="pkList"></div>',{full:true});
+    document.getElementById('pkQ').addEventListener('input',function(){PK.q=this.value;rows();});
+    rows();
+  };
+  C.H.pkSel=function(el){
+    var it=PK.items.filter(function(x){return String(x.id)===el.dataset.id;})[0],cb=PK.cb;
+    if(!it)return;C.closeSheet();if(cb)cb(it);
+  };
+})();}
 var K={sh:null,ts:null,d:null,mine:[],q:'',head:'',t:{med:null,forKind:'self',student:null,qty:1,reason:''}};
 var ST={in:['P','In stock'],low:['L','Few left'],out:['A','Out of stock']};
 
@@ -32,7 +52,7 @@ function list(){
 function mineHtml(){
   if(!K.mine.length)return '';
   return '<div class="ap-label" style="margin-top:18px">My recent entries</div>'+K.mine.map(function(x){
-    return '<div class="tk-mine"><b>'+x.qty+' × '+esc(x.medicine)+'</b>'+(x.voided?' <span class="tag A">Cancelled</span>':'')+'<br><small>'+esc(mdy(x.date))+' '+esc(x.time)+' · for '+(x.personKind==='student'?esc(x.person):'you')+'</small></div>';
+    return '<div class="tk-mine"><b>'+x.qty+' × '+esc(x.medicine)+'</b>'+(x.voided?' <span class="tag A">Cancelled</span>':x.confirmed?' <span class="tag P">Confirmed by nurse</span>':' <span class="tag L">Waiting for nurse</span>')+'<br><small>'+esc(mdy(x.date))+' '+esc(x.time)+' · for '+(x.personKind==='student'?esc(x.person):'you')+'</small>'+(!x.voided&&!x.confirmed?'<br><button class="mini" style="margin-top:4px" data-act="tkCancel" data-id="'+x.id+'" data-q="'+x.qty+'">Cancel</button>':'')+'</div>';
   }).join('');
 }
 
@@ -59,11 +79,17 @@ H.tkKind=function(el){keep();K.t.forKind=el.dataset.v;redraw();};
 H.tkQty=function(el){keep();K.t.qty=Math.max(1,Math.min(20,K.t.qty+(+el.dataset.d)));redraw();};
 H.tkChip=function(el){keep();K.t.reason=el.dataset.v;redraw();};
 H.tkStudent=function(){keep();C.pickSheet('Choose student',K.d.students.map(function(s){return {id:s.id,label:s.name,sub:'Student',av:['student',s.id]};}),function(it){K.t.student=it;redraw();});};
+H.tkCancel=function(el){
+  var id=Number(el.dataset.id);
+  C.ask('Cancel this entry? The '+el.dataset.q+' will be added back to the stock. Only do this if you did not actually take the medicine.',function(){
+    api('medCancelMine',{id:id}).then(function(r){toast('Cancelled. '+r.name+' put back.','ok');load();}).catch(function(e){fail(e);load();});
+  });
+};
 H.tkGo=function(){
   keep();var t=K.t;
   if(t.forKind==='student'&&!t.student){toast('Choose the student first.');return;}
   api('medTake',{medicineId:t.med.id,qty:t.qty,forKind:t.forKind,studentId:t.student?t.student.id:'',reason:t.reason}).then(function(r){
-    closeSheet();toast('Recorded: '+r.qty+' × '+r.name+(r.forKind==='student'?' for '+r.person:' for you')+'. Follow the label.','ok');load();
+    closeSheet();toast('Recorded: '+r.qty+' × '+r.name+(r.forKind==='student'?' for '+r.person:' for you')+'. The nurse will confirm it. Follow the label.','ok');load();
   }).catch(function(e){fail(e);load();});
 };
 C.take={open:open};
