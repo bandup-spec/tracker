@@ -179,22 +179,22 @@ H.myPhoto=function(){if(H.drawClose)H.drawClose();var u=S.user;photoSheet(u.role
 H.unwell=function(){C.loadJs('take.js').then(function(){C.take.open();}).catch(fail);};
 
 /* ---- searchable pick list (used by take.js and medicine.js): items are {id,label,sub,av:[kind,id]} ---- */
-var PK={items:[],cb:null,q:''};
-function pkRows(){
-  var q=PK.q.trim().toLowerCase(),rows=PK.items.filter(function(i){return !q||i.label.toLowerCase().indexOf(q)>=0;}).slice(0,80);
-  $('#pkList').innerHTML=rows.length?rows.map(function(i){
-    return '<button class="tk-row" data-act="pkSel" data-id="'+esc(i.id)+'"><span style="display:flex;align-items:center;gap:10px">'+(i.av?avatarHtml(i.av[0],i.av[1],i.label,30):'')+'<span>'+esc(i.label)+'</span></span>'+(i.sub?'<small style="color:var(--mut)">'+esc(i.sub)+'</small>':'')+'</button>';
+var PS={items:[],cb:null,q:''};
+function psRows(){
+  var q=PS.q.trim().toLowerCase(),rows=PS.items.filter(function(i){return !q||i.label.toLowerCase().indexOf(q)>=0;}).slice(0,80);
+  $('#psList').innerHTML=rows.length?rows.map(function(i){
+    return '<button class="tk-row" data-act="psSel" data-id="'+esc(i.id)+'"><span style="display:flex;align-items:center;gap:10px">'+(i.av?avatarHtml(i.av[0],i.av[1],i.label,30):'')+'<span>'+esc(i.label)+'</span></span>'+(i.sub?'<small style="color:var(--mut)">'+esc(i.sub)+'</small>':'')+'</button>';
   }).join(''):'<div class="empty"><b>No match</b></div>';
   avHydrate();
 }
 function pickSheet(title,items,cb){
-  PK.items=items;PK.cb=cb;PK.q='';
-  openSheet(shHead(esc(title),'')+'<input class="inp" id="pkQ" placeholder="Search…" autocomplete="off"><div id="pkList"></div>',{full:true});
-  $('#pkQ').addEventListener('input',function(){PK.q=this.value;pkRows();});
-  pkRows();
+  PS.items=items;PS.cb=cb;PS.q='';
+  openSheet(shHead(esc(title),'')+'<input class="inp" id="psQ" placeholder="Search…" autocomplete="off"><div id="psList"></div>',{full:true});
+  $('#psQ').addEventListener('input',function(){PS.q=this.value;psRows();});
+  psRows();
 }
-H.pkSel=function(el){
-  var it=PK.items.filter(function(x){return x.id===el.dataset.id;})[0],cb=PK.cb;
+H.psSel=function(el){
+  var it=PS.items.filter(function(x){return x.id===el.dataset.id;})[0],cb=PS.cb;
   if(!it)return;closeSheet();if(cb)cb(it);
 };
 
